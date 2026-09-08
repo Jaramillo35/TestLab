@@ -4,6 +4,7 @@ Knowledge base for the **Vehicle Harness Functional Tester** project. Read in th
 
 | # | File | What it is |
 |---|---|---|
+| 0 | `HANDOFF.md` | **New machine or new agent? Start here instead.** Clone-and-resume steps, machine requirements, state at handoff, and the gotchas. |
 | 1 | `PROJECT_STATUS.md` | **Start here.** Current phase, gate, decisions, open TBDs, single next action. |
 | 2 | `NEXT_STEP_BRIEF.md` | What to build next, the acceptance gate, and a ready-to-paste coding prompt. |
 | 3 | `P0-DOC-01_equipment_and_communication_inventory.md` | Equipment and planned communication inventory, from two planning drawings. |
