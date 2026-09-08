@@ -8,6 +8,18 @@
 
 > **Scope of authority.** Everything here is a *manufacturer capability statement transcribed from a document*. Nothing here is a physically verified as-built fact, an engineer-approved operating limit, or authorization to energize anything. The distinction defined in `P0-DOC-01` §11 — *shown in a document* vs. *physically verified* vs. *engineer approved* vs. *software validated* — applies to every line below. Every value in this document is at the first level only.
 
+> ### ⚠ Superseded in part by `P0-DOC-03_internet_research_findings.md` (2026-09-08)
+>
+> Later research corrected two conclusions in this document and expanded a third. Read `P0-DOC-03` alongside it:
+>
+> | Section here | Correction |
+> |---|---|
+> | §4.3, §5.5 — *"`TPA-BNC` adapter required"* | **Probably NOT required.** The TekVPI connector is a plain BNC that accepts standard BNC connections directly; TPA-BNC exists only for TekProbe-BNC products needing power/serial, and TBS2000 is not on its compatibility list. See `P0-DOC-03` §4.2. |
+> | §5.5 — *"50 Ω feedthrough `011-0049-02` likely missing"* | **It ships as a standard accessory with the TCPA300/400** — look in the amplifier's accessory kit before ordering. Also: the termination fault is detected **only during degauss/autobalance**, so degauss must be a mandatory pre-test step. See `P0-DOC-03` §4.3. |
+> | §6.5 — *"`IT-E151` does not exist; it is a mis-transcription of `IT-E155`"* | **Too confident.** `IT-E151` is listed by DigiKey under B&K Precision, and `IT-E151A` under ITECH — but for the **IT6900/IT6300/IT6700/IT8500+** families. The IT-M3900B 1U takes **`IT-E155A`** (+`B` or `C`). The real question is whether the *correct* kit is fitted. See `P0-DOC-03` §4.1. |
+> | §3.3 — five DAQ modules | **There are seven.** `DM307` (16-bit digital I/O + totalizer + 2× 18-bit DAC ±12 V/±24 mA) and `DM308` (20× Form C SPDT actuator relay, 300 V) exist and were absent from the datasheet. See `P0-DOC-03` §3.4. |
+> | §8.1 — DAQ3120 programming manual MISSING | **RETRIEVED** — `manuals/DAQ3120_programming_manual.pdf`, 139 pp, version January 7, 2026. The DAQ3120 is no longer blocked. |
+
 ---
 
 ## 1. Source document register

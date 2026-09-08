@@ -25,6 +25,7 @@ document_status: DRAFT_UNREVIEWED
 derived_from:
   - P0-DOC-01_equipment_and_communication_inventory.md
   - P0-DOC-02_instrument_datasheet_extract.md
+  - P0-DOC-03_internet_research_findings.md
   - command_register.md
 
 station:
@@ -66,6 +67,17 @@ instruments:
       planned: USB_VIRTUAL_COM       # NOT USBTMC - confirmed SRC-02 p.40, p.71
       class: SERIAL
       resource: TBD                  # e.g. COM port, assign after discovery, map by serial number
+      # USB bridge identified from B&K's own driver package (slabvcp.inf).
+      # Enumerate by vid+pid+serial_number via pyserial comports(); NEVER hard-code a COM number.
+      usb_bridge: SILICON_LABS_CP210x
+      usb_vid: 0x10C4
+      usb_pid: 0xEA60                # dual-port variants are 0xEA70 with Mi_00 / Mi_01
+      driver: CP210x_VCP
+      bundled_driver_version: 6.6.0.0    # dated 2012-10-05, predates Win10/11 - obtain current SiLabs driver
+      # R-DMM-02: CP210x units often share a factory serial string. Test with BOTH meters
+      # connected before relying on serial-based mapping; if they collide, fall back to a
+      # documented physical-port binding and make it a commissioning checklist item.
+      serial_uniqueness_verified: false
       baud_rate: 9600                # factory default, SRC-02 p.41
       data_bits: 8
       stop_bits: 1
@@ -144,9 +156,23 @@ instruments:
       resource: TBD
       ip_address: TBD
       production_transport_declared: false
+      ethernet_speed: 10BaseT_100BaseTx
+      usb_device_port_protocol: SELECTABLE_TMC_OR_CDC   # front panel INTERFACE CONFIGURATION menu
+      usb_speed: USB_2_0_FULL_SPEED
+      gpib_address_default: 15       # range 0-30, -GPIB models only
+      raw_socket_port: TBD           # manual example uses 5025; confirm by query on the unit
+      telnet_port_default: 5024
+      # Disable on a production station unless IT approves; both are SCPI-settable.
+      telnet_enabled: DISABLE_UNLESS_IT_APPROVED
+      web_interface_enabled: DISABLE_UNLESS_IT_APPROVED
 
-    command_register_status: BLOCKED # no programming manual available
-    programming_manual: MISSING
+    command_register_status: TRANSCRIBED
+    programming_manual: "manuals/DAQ3120_programming_manual.pdf (139 pp, version 2026-01-07)"
+    # Machine-readable identity and health - unlike the 2831E.
+    identity_query_available: true    # *IDN? -> "B&K Precision, DAQ3120, <Serial>, <Firmware>"
+    error_queue_query_available: true # SYSTem:ERRor?
+    module_query_available: true      # SYSTem:CTYPe? <slot 1-3> - verify modules at connect time
+    line_frequency_query_available: true  # SYSTem:LFRequency? - read it, do not assume
 
     capability:
       slots: 3
@@ -171,14 +197,54 @@ instruments:
       dc_current_ranges_a: [1.0e-6, 10.0e-6, 100.0e-6, 1.0e-3, 10.0e-3, 100.0e-3, 2]
       dc_current_input_fuse: "internal 250 V fuse for 2 A"
 
-    installed_modules: TBD           # MUST be physically recorded - see finding F-DAQ-01
+    # Channel addressing is <slot><channel>: slot 1 -> 1xx, slot 2 -> 2xx, slot 3 -> 3xx.
+    # Computed "Computer Channels" are 401-420.
+    channel_addressing: "(@<slot><ch>)"
+    computer_channels: [401, 420]
+
+    installed_modules: TBD           # MUST be physically recorded - see finding F-DAQ-01.
+                                     # SYSTem:CTYPe? <slot> can verify this at connect time.
     # Reference data for whichever modules turn out to be installed.
+    # NOTE: the datasheet lists 5 modules; the USER MANUAL lists 7. DM307 and DM308 below
+    # come from the user manual (P0-DOC-03 3.4) and were previously unknown to this project.
     module_catalog:
-      DM300: {channels: 20, current_channels: 0, switching: SOLID_STATE_2W,   scan_ch_per_s: 450, max_voltage_v: 120, max_current_a: null, four_wire: true,  notes: "two 10-ch banks, fully isolated, CJC built in"}
-      DM301: {channels: 20, current_channels: 2, switching: ARMATURE_2W,      scan_ch_per_s: 80,  max_voltage_v: 300, max_current_a: 1,    four_wire: true,  notes: "2W and 4W mixable on same module, CJC built in"}
-      DM303: {channels: 40, current_channels: 0, switching: ARMATURE_1W,      scan_ch_per_s: 80,  max_voltage_v: 300, max_current_a: null, four_wire: false, notes: "common signal ground, floatable to 300 V, no current"}
-      DM304: {channels: 32, current_channels: 0, switching: MATRIX_4x8_2W,    scan_ch_per_s: null, max_voltage_v: 300, max_current_a: 1,   four_wire: null,  notes: "3 ms switching, expandable to 96 cross-points, DOES NOT connect to built-in DMM"}
-      DM309: {channels: 8,  current_channels: 2, switching: ARMATURE_2W,      scan_ch_per_s: 60,  max_voltage_v: 600, max_current_a: 2,    four_wire: true,  notes: "600 VDC / 400 Vrms, per-channel fuse in module, TC needs external CJC"}
+      DM300: {channels: 20, current_channels: 0, switching: SOLID_STATE_2W,   scan_ch_per_s: 450, max_voltage_v: 120, max_current_a: null, four_wire: true,  internal_dmm: true,  notes: "two 10-ch banks, fully isolated, CJC built in. NO current, RTD, thermistor or capacitance"}
+      DM301: {channels: 20, current_channels: 2, switching: ARMATURE_2W,      scan_ch_per_s: 80,  max_voltage_v: 300, max_current_a: 1,    four_wire: true,  internal_dmm: true,  notes: "2W and 4W mixable on same module, CJC built in. Current is on channels 21 and 22 only - CONFIRM addressing on the bench (CR-DAQ-OPEN-03)"}
+      DM303: {channels: 40, current_channels: 0, switching: ARMATURE_1W,      scan_ch_per_s: 80,  max_voltage_v: 300, max_current_a: null, four_wire: false, internal_dmm: true,  notes: "common signal ground, floatable to 300 V, no current, no 4-wire"}
+      DM304: {channels: 32, current_channels: 0, switching: MATRIX_4x8_2W,    scan_ch_per_s: null, max_voltage_v: 300, max_current_a: null, four_wire: null, internal_dmm: false, notes: "3 ms switching, expandable to 96 cross-points, DOES NOT connect to built-in DMM"}
+      DM307: {channels: 16, current_channels: 0, switching: MULTIFUNCTION,    scan_ch_per_s: null, max_voltage_v: 42,  max_current_a: null, four_wire: null, internal_dmm: false, notes: "16-bit digital I/O (two 8-bit registers), 1x 100 kHz totalizer input (42 V), 2x 18-bit DAC output +/-12 V @ +/-24 mA. Stimulus source candidate"}
+      DM308: {channels: 20, current_channels: 0, switching: FORM_C_SPDT_RELAY, scan_ch_per_s: null, max_voltage_v: 300, max_current_a: null, four_wire: null, internal_dmm: false, notes: "Actuator / general-purpose switch. Thermal offset <4 uV. Fixture ACTUATION candidate - not considered in P0-DOC-01"}
+      DM309: {channels: 8,  current_channels: 2, switching: ARMATURE_2W,      scan_ch_per_s: 60,  max_voltage_v: 600, max_current_a: 2,    four_wire: true,  internal_dmm: true,  notes: "600 VDC / 400 Vrms, per-channel fuse in module, TC needs EXTERNAL cold junction and manual reference"}
+
+    # DB-9 female, rear panel. TTL SIGNALLING ONLY - not a safety-rated interface.
+    # Must never be presented as proof that hazardous energy is removed.
+    digital_io:
+      connector: DB9_FEMALE
+      safety_rated: false
+      pins:
+        1: {name: Alarm_OUT1, dir: out, type: TTL, note: "selectable TTL logic Hi or Lo"}
+        2: {name: Alarm_OUT2, dir: out, type: TTL, note: "selectable TTL logic Hi or Lo"}
+        3: {name: Alarm_OUT3, dir: out, type: TTL, note: "selectable TTL logic Hi or Lo"}
+        4: {name: Alarm_OUT4, dir: out, type: TTL, note: "selectable TTL logic Hi or Lo"}
+        5: {name: EOM_Out,    dir: out, type: TTL, note: "End of Measurement - activates when a compare measurement completes"}
+        6: {name: Ext_Trig_In, dir: in, type: TTL, note: "external trigger input, pulse >= 10 us"}
+        7: {name: Digital_Ground, dir: null, type: GND, note: "chassis ground for digital circuits"}
+        8: {name: NC, dir: null, type: null, note: "not connected"}
+        9: {name: NC, dir: null, type: null, note: "not connected"}
+
+    # Switching safety rules - see command_register.md 3.6
+    routing_rules:
+      default_close_command: ROUTe_CLOSe_EXCLusive   # break-before-make
+      plain_close_requires_reviewed_intent: true     # ROUTe:CLOSe leaves other channels closed
+      synchronize_on: ROUTe_DONE                     # never a fixed sleep
+      open_all_on_exit: true                         # incl. abort, timeout, exception, app close
+      routes_blocked_until_fixture_map_exists: true
+
+    # INSTrument:DMM OFF turns the DAQ into a pure switch so the external 2831E DMMs
+    # can measure routed harness pins. TOGGLING IT FORCES A FACTORY RESET (*RST),
+    # discarding the scan list and all channel configuration - connect-time decision only.
+    internal_dmm_mode: TBD                    # ON = internal DMM measures, OFF = pure switch
+    internal_dmm_toggle_forces_factory_reset: true
 
     channel_map: TBD                 # requires fixture schematic - P0-DOC-01 OBS-009
     forbidden_route_combinations: TBD
@@ -191,6 +257,11 @@ instruments:
       - "F-DAQ-02: DAQ cannot measure DUT current (1 A / 2 A max vs 240 A DUT)"
       - "F-DAQ-03: 4-wire pairs bank-1 with bank-2 channels, halving usable 4-wire points"
       - "Rack height 2U per datasheet vs 3U in P0-DOC-01 drawing S1"
+      - "R-DAQ-06: module lineup is 7 not 5; DM308 (Form C actuator) and DM307 (DAC + DIO) newly identified"
+      - "CR-DAQ-OPEN-01: SYSTem:CTYPe? response string format not documented - capture on bench"
+      - "CR-DAQ-OPEN-02: SYSTem:ERRor? error-code table not in the programming manual"
+      - "CR-DAQ-OPEN-03: DM301 current channel addressing (21/22 -> @121/@122?) needs bench confirmation"
+      - "CR-DAQ-OPEN-05: R? block-data format (#279...) parsing rules need bench confirmation"
 
   oscilloscope:
     equipment_id: EQ-007
@@ -389,17 +460,30 @@ current_measurement_chain:
     # results captured before the change become wrong and are not recoverable without it.
     must_be_recorded_per_run: true
 
-  # F-TCPA-02: TBS2104B has no 50 ohm input. An external feedthrough terminator is required.
+  # F-TCPA-02: TBS2104B has no 50 ohm input. An external feedthrough terminator IS required.
   termination:
     scope_has_50_ohm_input: false
     external_50_ohm_feedthrough_required: true
     tektronix_part: "011-0049-02"
     present: UNKNOWN_VERIFY
+    # R-TCPA-02 (P0-DOC-03 4.3): the feedthrough ships as a STANDARD ACCESSORY with the
+    # TCPA300/400 - look in the amplifier's accessory kit before ordering one.
+    likely_already_supplied_with_amplifier: true
+    # The "NOT TERMINATED INTO 50 OHM" fault is detected ONLY during DEGAUSS/AUTOBALANCE.
+    # A missing terminator otherwise produces a ~2x amplitude error that nothing flags.
+    fault_detected_only_during_degauss: true
+    degauss_is_mandatory_pre_test_step: true
 
   adapters:
-    tekvpi_to_bnc_adapter_required: true
+    # CORRECTED by R-TCPA-01 (P0-DOC-03 4.2). The TekVPI connector is a plain BNC with extra
+    # surrounding contacts; standard BNC connections plug straight in. TPA-BNC exists only for
+    # TekProbe-BNC products that need power/serial - which buys nothing here, because this
+    # scope does not auto-scale with a TCPA300/400 anyway. TBS2000 is also absent from the
+    # TPA-BNC compatibility list. Connect: TCPA400 BNC out -> 50 ohm feedthrough -> TekVPI input.
+    tekvpi_accepts_plain_bnc: true
+    tekvpi_to_bnc_adapter_required: false
     tektronix_part: "TPA-BNC"
-    present: UNKNOWN_VERIFY
+    status: NOT_REQUIRED_PENDING_MANUAL_CONFIRMATION
 
   unresolved:
     conductor_measured: TBD          # which conductor the probe surrounds
@@ -420,8 +504,14 @@ unresolved_equipment:
   rack_kit:
     equipment_id: EQ-010
     labelled_in_drawing: "B&K IT-E151 Rack Kit"
-    probable_actual: "ITECH IT-E155A / IT-E155B / IT-E155C rack mount kit"
-    rationale: "IT-E155A/B/C is the rack mount kit in the ITECH accessory list; IT-E151 does not appear. See finding F-PSU-02."
+    # CORRECTED by R-PSU-01 (P0-DOC-03 4.1). The earlier claim that IT-E151 does not exist
+    # was wrong: DigiKey lists IT-E151 under B&K Precision and IT-E151A under ITECH. But those
+    # are associated with the IT6900 / IT6300 / IT6700 / IT8500+ families. The IT-M3900B 1U
+    # models take IT-E155A (front), plus IT-E155B (rear) or IT-E155C (side) if the cabinet
+    # has no tray. So the question is not "is the label a typo" but "is the CORRECT kit fitted".
+    part_exists: true
+    correct_kit_for_this_chassis: "IT-E155A (+ IT-E155B or IT-E155C if no tray)"
+    if_it_e151_is_installed: RAISE_WITH_ENGINEER_LIKELY_WRONG_KIT
     is_powered_equipment: PROBABLY_NOT_VERIFY
     verification_required: true
 

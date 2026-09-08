@@ -19,7 +19,7 @@ Every row carries a **Review status**. Only `APPROVED` entries may ever be trans
 
 **Firmware caveat.** Every `TRANSCRIBED` entry below is transcribed from a manual whose own example `*IDN?` response is `2831E Multimeter,Ver1.0.09.12.03`. If the installed unit reports a different firmware version, **every entry reverts to unverified** until re-checked against the matching manual revision.
 
-**Current count: 0 APPROVED. 3 of 4 instruments fully BLOCKED.**
+**Current count: 0 APPROVED. 2 of 4 instruments fully BLOCKED.**
 
 ---
 
@@ -27,8 +27,8 @@ Every row carries a **Review status**. Only `APPROVED` entries may ever be trans
 
 | Instrument | Manual in repo? | Transport | Register status |
 |---|---|---|---|
-| B&K 2831E DMM ×2 | **Yes** — `bk_precision_2831e_manual.pdf` | USB Virtual COM (serial), 8N1, 9600 default, `<LF>` or `<CR>` | `TRANSCRIBED` |
-| B&K DAQ3120 | **No** | LAN / USBTMC / USBVCP / micro-GPIB | `BLOCKED` |
+| B&K 2831E DMM ×2 | **Yes** — `bk_precision_2831e_manual.pdf` | USB Virtual COM (serial, CP210x), 8N1, 9600 default, `<LF>` or `<CR>` | `TRANSCRIBED` |
+| B&K DAQ3120 | **Yes** — `manuals/DAQ3120_programming_manual.pdf` | LAN / USBTMC / USBVCP / micro-GPIB | `TRANSCRIBED` |
 | Tektronix TBS2104B | **No** (programmer manual is `077-1149-xx`) | LAN / USBTMC | `BLOCKED` |
 | ITECH IT-M3906B-32-240 | **No** | LAN / USB / CAN / P-IO | `BLOCKED` |
 
@@ -53,6 +53,11 @@ Every row carries a **Review status**. Only `APPROVED` entries may ever be trans
 | Reading data format | `SD.DDDDDDESDDD<NL>` | p.41 §5.3 |
 | Echo handshake | **Every transmitted character is echoed; wait for it before sending the next** | p.41 §5.2.4 item 3 |
 | Queries per line | **One** query per command line recommended; two queries require two reads | p.41 §5.2.4 item 5 |
+| USB bridge chip | **Silicon Labs CP210x USB-to-UART Bridge** | B&K `Bench_Multimeter_USB_Drivers.zip` → `slabvcp.inf` (SRC-09) |
+| USB VID / PID | **`0x10C4` / `0xEA60`** (dual-port variants use `0xEA70` + `Mi_00`/`Mi_01`) | SRC-09 `slabvcp.inf` |
+| Bundled driver version | 6.6.0.0, dated 2012-10-05 — **predates Windows 10/11; obtain a current CP210x VCP driver** | SRC-09 `ReleaseNotes.txt` |
+
+> **Port mapping (closes the OBS-007 action).** Enumerate by `VID_10C4` + `PID_EA60` + **serial number**, never by COM-port order — `pyserial`'s `comports()` exposes `vid`, `pid` and `serial_number`. **Caveat R-DMM-02:** CP210x devices are often shipped with identical factory serial strings. Test with both meters connected before relying on serial-based identification; if the serials collide, fall back to a documented physical-port binding and make it a commissioning checklist item.
 
 ### 2.2 Command syntax rules (p.42–45)
 
@@ -214,21 +219,227 @@ Each line is transmitted with the configured terminator, respecting the per-char
 
 ---
 
-## 3. B&K Precision DAQ3120 — BLOCKED
+## 3. B&K Precision DAQ3120 — TRANSCRIBED
 
-**Manual in repo:** none. `DAQ3120_datasheet.pdf` is a datasheet and contains **no commands**.
+**Source document:** `manuals/DAQ3120_programming_manual.pdf` (SRC-07), *DAQ3120 Series Programming Manual*, version stamp **January 7, 2026**, 139 pp. SHA-256 (first 16) `563c57bf11cae55a`. Retrieved from B&K Precision's media bucket — see `P0-DOC-03_internet_research_findings.md` §2.
+**Model scope:** DAQ3120 Series.
+**Reviewer:** *(none — unreviewed)*
+**Bench verification:** *(none)*
+**Firmware caveat:** unverified against the installed unit. `*IDN?` returns the firmware version — record it and re-check this register against the matching manual revision.
+
+> **Switching commands are the highest-risk commands in this project.** A wrong route can connect a resistance measurement path to an energized circuit, or short two harness pins together. Nothing in §3.6 may be emitted until the fixture schematic, the channel map and the forbidden-combination table exist and have been reviewed (`P0-DOC-01` OBS-009, T-04).
+
+### 3.1 Syntax and data types (SRC-07 ch. 2–3)
+
+- Standard SCPI: long/short forms, case-insensitive, responses return short form uppercase.
+- `<NRf>` accepts `<NR1>` integer, `<NR2>` decimal, `<NR3>` exponent.
+- `<Boolean>`: `ON`/`1`, `OFF`/`0`.
+- `<String>`: double-quoted; the quotes are part of the syntax.
+- Special keywords: `MIN`, `MAX`, `DEF`, `AUTO`.
+
+**Channel list `(@<ch_list>)` — SRC-07 §3.3, p.18:**
+
+| Form | Example |
+|---|---|
+| Single | `(@101)` |
+| Multiple | `(@101,102,105)` |
+| Range | `(@101:105)` |
+| Combined | `(@101:105,201)` |
+
+Channel numbers are `<slot><channel>`: slot 1 → `1xx`, slot 2 → `2xx`, slot 3 → `3xx`. Computed "Computer Channels" are **401–420** (DAQ3120 user manual §5.6.1).
+
+### 3.2 Common commands (SRC-07 ch. 5, pp.22–26)
+
+| ID | Command | Response | Notes |
+|---|---|---|---|
+| `CR-DAQ-001` | `*IDN?` | `B&K Precision, DAQ3120, <Serial Number>, <Firmware Version>` | **Serial and firmware are machine-readable** — automate the identity check |
+| `CR-DAQ-002` | `*RST` | — | Factory default. **Aborts any scan and clears the scan list** |
+| `CR-DAQ-003` | `*CLS` | — | Clear status |
+| `CR-DAQ-004` | `*ESE` / `*ESR?` | — / `<NR1>` | Standard event status enable / read |
+| `CR-DAQ-005` | `*OPC` / `*OPC?` | — / `<NR1>` | Operation complete |
+| `CR-DAQ-006` | `*SRE` / `*STB?` | — / `<NR1>` | Service request enable / status byte |
+| `CR-DAQ-007` | `*TRG` | — | Software trigger. **Prerequisite: `TRIGger:SOURce BUS`** |
+| `CR-DAQ-008` | `*TST?` | `0` = pass, non-zero = fail | Complete self-test |
+| `CR-DAQ-009` | `*WAI` | — | Wait for pending operations |
+| `CR-DAQ-010` | `*SAV` / `*RCL` | — | Save / recall instrument state |
+| `CR-DAQ-011` | `*PSC` | — | Power-on status clear |
+
+### 3.3 Acquisition control (SRC-07 ch. 6, pp.28–30)
+
+| ID | Command | Description |
+|---|---|---|
+| `CR-DAQ-020` | `ABORt` | Aborts a scan in progress, returns to trigger idle. **Starting a new scan after an abort clears reading memory** |
+| `CR-DAQ-021` | `INITiate[:IMMediate]` | Idle → wait-for-trigger. **Clears the previous set of measurements from reading memory** |
+| `CR-DAQ-022` | `FETCh?` | Waits for completion, copies all available measurements to the output buffer. **Does not erase readings** — the same data can be retrieved repeatedly |
+| `CR-DAQ-023` | `READ?` | Starts a new scan and waits for completion. **Equivalent to `ABORt` + `INITiate` + `FETCh?`** |
+| `CR-DAQ-024` | `R? <NR1>` | Reads **and erases** up to `<NR1>` (1–100000) oldest readings. Returns block data (e.g. `#279…`). **Does not wait for completion** |
+| `CR-DAQ-025` | `INSTrument:DMM <Boolean>` / `?` | Enable/disable the internal DMM |
+| `CR-DAQ-026` | `TIME:SYNC:SERVer "<url>"` / `?` | NTP server |
+| `CR-DAQ-027` | `UNIT:TEMPerature C\|F\|K [,(@<ch_list>)]` / `?` | Temperature units |
+
+> **`CR-DAQ-025` is architecturally important and has a trap.** Manual, §6.4: *"When disabled, the instrument acts as a switch, allowing external instruments to measure signals routed through the multiplexer modules."* — this is how the DAQ routes harness pins to the two external 2831E DMMs. **But: *"Changing the state of the internal DMM triggers a Factory Reset (`*RST`)."*** So it is a connect-time decision only. Never toggle it mid-sequence: it silently discards the scan list and all channel configuration.
+
+> **Reading memory is 100,000 readings and wraps** — *"If memory overflows, the oldest readings are overwritten."* For long scans use `R?` to drain periodically, and never assume `FETCh?` returned everything.
+
+### 3.4 CONFigure subsystem (SRC-07 ch. 8, pp.39–45)
+
+| ID | Command | Parameters |
+|---|---|---|
+| `CR-DAQ-030` | `CONFigure? [(@<ch_list>)]` | Returns e.g. `"VOLT +1.000000E+01,+3.000000E-06"` |
+| `CR-DAQ-031` | `CONFigure:RESistance\|FRESistance [<range>[,<resolution>]][,(@<ch_list>)]` | `<range>`: value \| `AUTO` \| `MIN` \| `MAX` \| `DEF` (**100 Ω to 100 MΩ**). `FRESistance` = 4-wire |
+| `CR-DAQ-032` | `CONFigure[:VOLTage]:AC\|DC [<range>[,<resolution>]][,(@<ch_list>)]` | |
+| `CR-DAQ-033` | `CONFigure:CURRent:AC\|DC [<range>[,<resolution>]][,(@<ch_list>)]` | **DM301 channels 21/22 and DM309 current channels only** |
+| `CR-DAQ-034` | `CONFigure:FREQuency\|PERiod [<range>[,<resolution>]][,(@<ch_list>)]` | Auto range only; value ignored |
+| `CR-DAQ-035` | `CONFigure:DIODe [(@<ch_list>)]` | |
+| `CR-DAQ-036` | `CONFigure:CAPacitance [<range>[,<resolution>]][,(@<ch_list>)]` | 1 nF to 100 µF |
+| `CR-DAQ-037` | `CONFigure:TEMPerature …` | Thermocouple / RTD / thermistor |
+| `CR-DAQ-038` | `CONFigure:STRain:…` | Direct / quarter / half / full bridge |
+| `CR-DAQ-039` | `CONFigure:TOTalize` | DM307 |
+| `CR-DAQ-040` | `CONFigure:DIGital[:BYTE]`, `CONFigure:DAC:OUTPut`, `CONFigure:DAC:SENSe` | DM307 |
+
+Example, verbatim from the manual: `CONF:RES 10k,(@101)`
+
+### 3.5 MEASure subsystem (SRC-07 ch. 14, pp.62–67)
+
+`MEASure:…?` configures **and** immediately returns a value. Same parameter shapes as `CONFigure`.
+
+| ID | Query |
+|---|---|
+| `CR-DAQ-050` | `MEASure:RESistance\|FRESistance? [<range>[,<resolution>]][,(@<ch_list>)]` — e.g. `MEAS:RES? 10k,(@101)` |
+| `CR-DAQ-051` | `MEASure[:VOLTage]:AC\|DC? …` |
+| `CR-DAQ-052` | `MEASure:CURRent:AC\|DC? …` |
+| `CR-DAQ-053` | `MEASure:FREQuency\|PERiod? …` |
+| `CR-DAQ-054` | `MEASure:DIODe? [(@<ch_list>)]` |
+| `CR-DAQ-055` | `MEASure:CAPacitance? …` |
+| `CR-DAQ-056` | `MEASure:TEMPerature? …` |
+| `CR-DAQ-057` | `MEASure:TOTalize?`, `MEASure:DIGital[:BYTE]?`, `MEASure:DAC:OUTPut?`, `MEASure:DAC:SENSe?` |
+| `CR-DAQ-058` | `MEASure:STRain:…?` |
+
+### 3.6 ROUTe subsystem — SWITCHING, HIGHEST RISK (SRC-07 ch. 17, pp.74–77)
+
+| ID | Command | Description |
+|---|---|---|
+| `CR-DAQ-060` | `ROUTe:CLOSe (@<ch_list>)` / `ROUTe:CLOSe? (@<ch_list>)` | Closes the specified channels. **Allows multiple channels closed simultaneously.** Does **not** open anything else |
+| `CR-DAQ-061` | `ROUTe:CLOSe:EXCLusive (@<ch_list>)` | Closes the channel and **opens all other channels on the same bank (break-before-make)** |
+| `CR-DAQ-062` | `ROUTe:OPEN (@<ch_list>)` / `?` | Opens the specified channels |
+| `CR-DAQ-063` | `ROUTe:DONE?` | Returns `1` when all relay operations are finished |
+| `CR-DAQ-064` | `ROUTe:SCAN (@<ch_list>)` / `?` | Defines the scan list. **`ROUTe:SCAN (@)` clears it** |
+| `CR-DAQ-065` | `ROUTe:SCAN:SIZE?` | Number of channels in the scan list |
+| `CR-DAQ-066` | `ROUTe:MONitor (@<ch_list>)` / `?` | Channel to monitor continuously. **Only one at a time** |
+| `CR-DAQ-067` | `ROUTe:MONitor:STATe <Boolean>` / `?` | Enable monitor mode |
+
+**Mandatory design rules for the route layer:**
+
+1. **Default to `CR-DAQ-061` (`ROUTe:CLOSe:EXCLusive`).** Plain `ROUTe:CLOSe` leaves previously closed channels closed, which on a harness fixture means unintended pin-to-pin connections. Emitting `ROUTe:CLOSe` must require an explicit, reviewed multi-point intent that has been checked against the forbidden-combination table.
+2. **Synchronize on `ROUTe:DONE?`, never on a fixed sleep.**
+3. **Open before de-energizing and after every sequence**, including abort, timeout, exception and application close.
+4. No route may be emitted at all until T-04 (fixture schematic, pin map, route table, forbidden combinations) exists and is reviewed.
+
+### 3.7 SENSe — resistance (SRC-07 ch. 18.8, pp.89–92)
+
+| ID | Command | Parameters |
+|---|---|---|
+| `CR-DAQ-070` | `[SENSe:]RESistance\|FRESistance:NPLCycles <PLCs> [,(@<ch_list>)]` / `?` | **0.02 to 200** |
+| `CR-DAQ-071` | `[SENSe:]RESistance\|FRESistance:APERture <seconds>` / `?` | Integration time in seconds |
+| `CR-DAQ-072` | `[SENSe:]RESistance\|FRESistance:APERture:ENABle <state>` / `?` | Use aperture instead of NPLC |
+| `CR-DAQ-073` | `[SENSe:]RESistance\|FRESistance:OCOMpensated <state>` / `?` | **Offset compensation — cancels thermal EMF.** e.g. `RES:OCOM ON,(@101)` |
+| `CR-DAQ-074` | `[SENSe:]RESistance\|FRESistance:POWer:LIMit[:STATe] <state>` / `?` | **Low-power mode — prevents self-heating** |
+| `CR-DAQ-075` | `[SENSe:]RESistance\|FRESistance:RANGe <range>` / `?` | 100 Ω to 100 MΩ |
+| `CR-DAQ-076` | `[SENSe:]RESistance\|FRESistance:RANGe:AUTO <state>` / `?` | `OFF` \| `ON` \| `ONCE` |
+| `CR-DAQ-077` | `[SENSe:]RESistance\|FRESistance:ZERO:AUTO <state>` / `?` | `OFF` \| `ON` \| `ONCE` |
+
+> For milliohm-level harness continuity, prefer **`FRESistance`** (4-wire) with **`OCOMpensated ON`**. The datasheet warns that 2-wire without a math null adds **2 Ω** of error, and module thermal offset is <1–4 µV, which at 1 mA test current is ~1–4 mΩ. Both settings belong in the reviewed recipe, not in driver defaults.
+
+Other `SENSe` branches follow the same shape: `[SENSe:]FUNCtion[:ON]`, `AVERage:*`, `VOLTage:*` (incl. `[SENSe:]VOLTage[:DC]:IMPedance:AUTO`), `CURRent:*`, `FREQuency|PERiod:*`, `TEMPerature:*`, `STRain:*`, `TOTalize:*`, `CAPacitance:*`, `DIODe:ZERO:AUTO`, `DIGital:DATA…?`.
+
+### 3.8 TRIGger subsystem (SRC-07 ch. 22, pp.139–140)
+
+| ID | Command | Parameters |
+|---|---|---|
+| `CR-DAQ-080` | `TRIGger:SOURce IMMediate\|TIMer\|EXTernal\|BUS\|ALARm1..4` / `?` | `IMM` scans immediately after `INITiate`; `TIM` uses `TRIGger:TIMer`; `EXT` waits for a TTL pulse on the rear-panel Ext Trig input; `BUS` waits for `*TRG` |
+| `CR-DAQ-081` | `TRIGger:COUNt <count>\|MIN\|MAX\|DEF\|INFinity` / `?` | 1 to 1,000,000, or `INFinity` (**scans until `ABORt`**) |
+| `CR-DAQ-082` | `TRIGger:TIMer <seconds>\|MIN\|MAX\|DEF` / `?` | 0 to 360000 s, 1 ms resolution |
+| `CR-DAQ-083` | `TRIGger:SLOPe POSitive\|NEGative` / `?` | External trigger edge. Only relevant with `TRIGger:SOURce EXTernal` |
+
+### 3.9 CALCulate — limits and scaling (SRC-07 ch. 7, pp.33–37)
+
+| ID | Command | Parameters |
+|---|---|---|
+| `CR-DAQ-090` | `CALCulate:LIMit:LOWer <value> [,(@<ch_list>)]` / `?` | −1.0E+9 to 1.0E+9 |
+| `CR-DAQ-091` | `CALCulate:LIMit:UPPer <value> [,(@<ch_list>)]` / `?` | −1.0E+9 to 1.0E+9 |
+| `CR-DAQ-092` | `CALCulate:LIMit:STATe <Boolean> [,(@<ch_list>)]` / `?` | Per-channel limit testing |
+| `CR-DAQ-093` | `CALCulate:SCALe:GAIN` / `:OFFSet` / `:STATe` | Mx+B scaling |
+| `CR-DAQ-094` | `CALCulate:AVERage:ALL?` / `:AVERage?` / `:MINimum?` / `:MAXimum?` / `:COUNt?` / `:CLEar` | Statistics |
+| `CR-DAQ-095` | `CALCulate:SMOothing:RESPonse` / `:STATe` | |
+
+> **`CALCulate:LIMit` does not replace application-side pass/fail.** Unlike the 2831E, the DAQ *can* evaluate limits — but the run record must still store the **raw reading** and the application must still compute the verdict. Instrument limit state may be used for alarm outputs and early abort, never as the sole recorded verdict.
+
+### 3.10 SYSTem subsystem — identity, errors, LAN (SRC-07 ch. 21, pp.121–137)
+
+| ID | Command | Description |
+|---|---|---|
+| `CR-DAQ-100` | `SYSTem:CTYPe? <slot>` | **Queries the module installed in slot 1–3.** e.g. `SYST:CTYP? 1` |
+| `CR-DAQ-101` | `SYSTem:ERRor?` | **Queries and clears the next error** — code and message string |
+| `CR-DAQ-102` | `SYSTem:SERial?` | Instrument serial number |
+| `CR-DAQ-103` | `SYSTem:VERSion?` | SCPI version |
+| `CR-DAQ-104` | `SYSTem:LFRequency?` | **Detected power line frequency (50 or 60 Hz)** |
+| `CR-DAQ-105` | `SYSTem:CPON` | Card power on — reinitializes the plug-in modules |
+| `CR-DAQ-106` | `SYSTem:LOCal` / `SYSTem:REMote` | Front panel unlock / lock |
+| `CR-DAQ-107` | `SYSTem:PRESet` | |
+| `CR-DAQ-108` | `SYSTem:RELay:CYCLes?` / `:CLEar` / `:FACTory?` | **Relay cycle counters — preventive-maintenance data** |
+| `CR-DAQ-109` | `SYSTem:TEMPerature?`, `SYSTem:UPTime?`, `SYSTem:DATE`, `SYSTem:TIME`, `SYSTem:TIME:SCAN?` | |
+| `CR-DAQ-110` | `SYSTem:SLOT:LABel`, `SYSTem:WMESsage`, `SYSTem:ALARm?`, `SYSTem:BEEPer…`, `SYSTem:CLICk:STATe` | |
+| `CR-DAQ-111` | `SYSTem:SCPi:MODE`, `SYSTem:SCPi:AUTO:SAVE`, `SYSTem:PERSona…` | Emulation/identity spoofing — **do not change** |
+| `CR-DAQ-112` | `SYSTem:COMMunicate:LAN:DHCP\|IPADdress\|SMASk\|GATeway\|DNS\|HOSTname\|MAC?\|DOMain?\|WINS\|UPDate\|TIMeout` | LAN configuration |
+| `CR-DAQ-113` | `SYSTem:COMMunicate:LAN:TCP:ENABle` / `:TCP:PORT` | Raw socket. Manual example port **5025** |
+| `CR-DAQ-114` | `SYSTem:COMMunicate:LAN:TELNet:ENABle\|PORT\|ECHO\|TIMeout\|PROMpt\|WMESsage` | Telnet. **Default port 5024** |
+| `CR-DAQ-115` | `SYSTem:COMMunicate:LAN:WEB:ENABle` | **Web interface on/off** |
+| `CR-DAQ-116` | `SYSTem:COMMunicate:GPIB:ADDRess` | 0–30, default 15 |
+
+> **`CR-DAQ-100` and `CR-DAQ-101` change what the application can guarantee.** `SYSTem:CTYPe?` lets the app **verify the installed module in each slot at connect time** and refuse to run if the configuration does not match the reviewed channel map. `SYSTem:ERRor?` gives real error reporting — drain the queue after every command batch. Neither has an equivalent on the 2831E.
+>
+> **`CR-DAQ-111` `SYSTem:PERSona`** changes the identity string the instrument reports. It must never be used: it would defeat the identity check the project depends on.
+>
+> **Security:** Telnet (`CR-DAQ-114`) and the web interface (`CR-DAQ-115`) should be **disabled** on a production station unless IT approves otherwise, and the decision recorded (`P0-DOC-01` OBS-006).
+
+### 3.11 Other subsystems available
+
+`DATA:LAST?`, `DATA:POINts?`, `DATA:POINts:EVENt:THReshold`, `DATA:REMove?` (ch. 9) · `DIGital:INTerface:MODE\|DATA:OUTPut\|DATA:SETup` (ch. 10) · `DISPlay`, `DISPlay:TEXT`, `DISPlay:TEXT:CLEar` (ch. 11) · `FORMat:READing:ALARm\|CHANnel\|DATE\|TIME\|TIME:TYPE\|UNIT` (ch. 12) · `HCOPy:SDUMp:DATA?\|FORMat` screen dump (ch. 13) · `MMEMory:FORMat:READing:*`, `MMEMory:LOG[:ENABle]` (ch. 15) · `OUTPut:ALARm:CLEar\|MODE\|SLOPe` (ch. 16) · `SOURce:CURRent\|VOLTage\|MODE\|MODE:LOCK\|DIGital:DATA[:BYTE]\|:WORD` (ch. 19, DM307) · `STATus:ALARm\|OPERation\|QUEStionable :CONDition?\|:ENABle\|[:EVENt]?`, `STATus:PRESet` (ch. 20).
+
+> **`FORMat:READing:CHANnel ON` is strongly recommended.** It prefixes each value with its channel number, so a returned block cannot be silently mis-associated with the wrong harness pin. Likewise `FORMat:READing:DATE`/`TIME` for traceable run records.
+
+### 3.12 Deterministic scan sequence (composed from the above)
+
+```
+*RST                                  # CR-DAQ-002  clears scan list and config
+SYST:ERR?                             # CR-DAQ-101  drain the error queue
+*IDN?                                 # CR-DAQ-001  record serial + firmware
+SYST:CTYP? 1                          # CR-DAQ-100  verify module in each slot
+SYST:LFR?                             # CR-DAQ-104  read line frequency, do not assume
+FORM:READ:CHAN ON                     # CR-DAQ-...  channel number with every reading
+CONF:FRES 100,(@101:110)              # CR-DAQ-031  4-wire, reviewed range
+FRES:OCOM ON,(@101:110)               # CR-DAQ-073  cancel thermal EMF
+FRES:NPLC 10,(@101:110)               # CR-DAQ-070  reviewed integration time
+ROUT:SCAN (@101:110)                  # CR-DAQ-064  reviewed scan list
+TRIG:SOUR BUS                         # CR-DAQ-080
+TRIG:COUN 1                           # CR-DAQ-081
+INIT                                  # CR-DAQ-021
+*TRG                                  # CR-DAQ-007
+FETC?                                 # CR-DAQ-022
+SYST:ERR?                             # CR-DAQ-101  confirm no error was raised
+```
+
+**This sequence is `TRANSCRIBED`, not `APPROVED`.** The channel list is illustrative — real channels require the fixture map (T-04) and the module list (T-08).
+
+### 3.13 DAQ3120 items still requiring the user manual or bench work
 
 | ID | Item | Status |
 |---|---|---|
-| `CR-DAQ3120-000` | Entire command set | **BLOCKED** |
-
-**Nothing may be written for this instrument** — no channel configuration, no scan list, no route, no read, not even `*IDN?`. In particular:
-
-- Do **not** assume DAQ3120 SCPI resembles Keysight 34970A/DAQ970A syntax (`ROUT:SCAN`, `MEAS:VOLT:DC? (@101)`, …). Similarity of function is not evidence of syntax.
-- Do **not** assume `*IDN?` works merely because it is an IEEE-488.2 common command.
-- The **relay-switching commands are the highest-risk commands in this project** — a wrong route can connect a resistance measurement path to an energized circuit. They require the manual *and* the fixture schematic *and* the forbidden-combination table before a single line is written.
-
-**To unblock:** obtain the B&K Precision DAQ3120 programming manual for the installed firmware from bkprecision.com, register it here with revision and date, transcribe with page citations, then review.
+| `CR-DAQ-OPEN-01` | `SYSTem:CTYPe?` response string format | Not shown in the programming manual — capture it on the bench |
+| `CR-DAQ-OPEN-02` | `SYSTem:ERRor?` error-code table | Not in the programming manual |
+| `CR-DAQ-OPEN-03` | Exact per-module channel numbering (which channel numbers are the DM301 current channels; the manual body says current is on **channels 21 and 22** of DM301, i.e. `(@121)`/`(@122)` in slot 1 — **confirm on the bench before use**) | Partly documented, needs confirmation |
+| `CR-DAQ-OPEN-04` | Default raw-socket port on the installed unit (manual *example* uses 5025) | Confirm by query |
+| `CR-DAQ-OPEN-05` | `R?` block-data format (`#279…`) parsing rules | Confirm on the bench |
 
 ---
 
