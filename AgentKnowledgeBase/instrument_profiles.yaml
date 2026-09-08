@@ -1,0 +1,457 @@
+# Vehicle Harness Functional Tester — Instrument Profiles
+#
+# PURPOSE
+#   Machine-readable form of the facts established in P0-DOC-02_instrument_datasheet_extract.md.
+#   Intended to be loaded by the application as reference data so that capability ceilings,
+#   transport parameters and scale factors live in one reviewed place instead of being
+#   scattered through driver code.
+#
+# STATUS: DRAFT / UNREVIEWED / SIMULATION ONLY
+#
+# RULES FOR ANY AGENT OR ENGINEER EDITING THIS FILE
+#   1. Every numeric value here is a MANUFACTURER CAPABILITY transcribed from a datasheet.
+#      It is NOT an approved operating limit. Fields named approved_* are the operating
+#      limits and are all TBD until an engineer sets them.
+#   2. Never replace a `TBD` with a guess, and never replace it with a capability ceiling.
+#      `TBD` is a valid, meaningful value: it means the application must refuse to operate
+#      that path in Real mode.
+#   3. Never add a `command:` field for an instrument whose command_register.md entry is
+#      BLOCKED.
+#   4. `resource:` strings must be recorded only after read-only discovery on the bench.
+#      Do not invent VISA resource strings, IP addresses, or COM port numbers.
+
+schema_version: 1
+document_status: DRAFT_UNREVIEWED
+derived_from:
+  - P0-DOC-01_equipment_and_communication_inventory.md
+  - P0-DOC-02_instrument_datasheet_extract.md
+  - command_register.md
+
+station:
+  name: Vehicle Harness Functional Tester
+  mode_default: SIMULATION
+  real_mode_enabled: false
+  # Simulation must never open VISA, serial, sockets or any real instrument resource.
+  simulation_may_open_real_resources: false
+
+safety:
+  physical_estop_independent: REQUIRED_NOT_YET_VERIFIED
+  interlock_feedback_interface: TBD
+  contactor_feedback_interface: TBD
+  output_off_verification_interface: TBD
+  # Candidate hardwired interlock/inhibit path identified in P0-DOC-02 6.4.
+  # Pinout is NOT published in the datasheet. Do not assume any pin behaviour.
+  psu_p_io_interface:
+    present_on_instrument: true
+    pinout_source: MISSING_MANUAL
+    role_in_safety_chain: TBD_ENGINEER_DECISION
+  notes: >
+    Software may monitor safety state but must never replace the safety circuit.
+    Hazardous-energy removal must be provable without the PC.
+
+instruments:
+
+  dmm_a:
+    equipment_id: EQ-003
+    role: Harness electrical measurement A
+    model_expected: BK_2831E
+    manufacturer: B&K Precision
+    identity_verified_from_nameplate: false
+    serial_number: TBD
+    firmware_version: TBD
+    calibration_due: TBD
+    required: TBD
+
+    transport:
+      planned: USB_VIRTUAL_COM       # NOT USBTMC - confirmed SRC-02 p.40, p.71
+      class: SERIAL
+      resource: TBD                  # e.g. COM port, assign after discovery, map by serial number
+      baud_rate: 9600                # factory default, SRC-02 p.41
+      data_bits: 8
+      stop_bits: 1
+      parity: none
+      terminator: LF                 # LF or CR, set on the instrument, SRC-02 p.40
+      # Documented protocol quirks the driver MUST implement - SRC-02 p.41 5.2.4
+      per_character_echo_handshake: true
+      one_query_per_command_line: true
+      slow_commands_require_wait: ["*RST"]
+      response_format: "SD.DDDDDDESDDD<NL>"
+
+    capability:
+      identify_command_id: CR-2831E-001
+      functions: [VOLT_DC, VOLT_AC, CURR_DC, CURR_AC, RESISTANCE_2W, FREQUENCY, PERIOD, DIODE, CONTINUITY]
+      resistance_wire_mode: 2_WIRE_ONLY
+      max_input_voltage_dc_v: 1000
+      max_input_voltage_ac_vrms: 750
+      max_input_current_a: 20
+      max_input_current_20a_range_duration_s: 20     # >10-20 A readable for 20 s max, SRC-02 p.66
+      current_input_fuse: "1 A / 250 V"
+      resistance_open_circuit_voltage_v: 5.5
+      continuity_range_ohm: 200
+      continuity_threshold_pct_of_range: 5           # ~10 ohm
+      continuity_test_current_a: 0.0005
+      warmup_minutes: 30
+      resistance_ranges_ohm: [200, 2.0e3, 20.0e3, 200.0e3, 2.0e6, 20.0e6]
+      # Ranges <= 20 kohm are specified ONLY under REL (null). See P0-DOC-02 2.5.
+      resistance_low_ranges_require_rel: [200, 2.0e3, 20.0e3]
+      reading_rates_per_second:
+        dcv:  {slow: 5,   med: 10,  fast: 25}
+        dci:  {slow: 5,   med: 10,  fast: 25}
+        acv:  {slow: 5,   med: 10,  fast: 25}
+        aci:  {slow: 5,   med: 10,  fast: 25}
+        ohm_below_2M:  {slow: 5,   med: 10,  fast: 25}
+        ohm_20M_above: {slow: 1.3, med: 2.6, fast: 5.6}
+        dual_display:  {slow: 0.9, med: 0.9, fast: 0.8}
+
+    approved_limits:
+      approved_max_voltage_v: TBD
+      approved_max_current_a: TBD
+
+    known_gaps:
+      - "No error/status queue query documented - instrument error state is not machine-readable (CR-2831E-BLOCKED-04)"
+      - "No SCPI limit/compare subsystem - pass/fail must be evaluated in the application (CR-2831E-BLOCKED-03)"
+      - "HOLD subsystem listed but not documented (CR-2831E-BLOCKED-02)"
+      - ":READ? and :MEASure? referenced but never defined (CR-2831E-BLOCKED-01)"
+
+  dmm_b:
+    equipment_id: EQ-004
+    role: Harness electrical measurement B
+    same_profile_as: dmm_a
+    identity_verified_from_nameplate: false
+    serial_number: TBD
+    firmware_version: TBD
+    transport:
+      planned: USB_VIRTUAL_COM
+      resource: TBD                  # MUST be mapped by serial number, not by port order
+    approved_limits:
+      approved_max_voltage_v: TBD
+      approved_max_current_a: TBD
+
+  daq:
+    equipment_id: EQ-005
+    role: Multi-channel harness measurement and switching
+    model_expected: BK_DAQ3120
+    manufacturer: B&K Precision
+    identity_verified_from_nameplate: false
+    serial_number: TBD
+    firmware_version: TBD
+    calibration_due: TBD
+    required: TBD
+
+    transport:
+      planned: LAN                   # per concept drawing S2 / COM-004
+      available: [LAN, USB_TMC, USB_VCP, MICRO_GPIB_OPTION]
+      resource: TBD
+      ip_address: TBD
+      production_transport_declared: false
+
+    command_register_status: BLOCKED # no programming manual available
+    programming_manual: MISSING
+
+    capability:
+      slots: 3
+      max_channels_per_system: 120
+      builtin_dmm_digits: 6.5
+      internal_memory_samples: 100000
+      max_reading_rate_per_second: 38400
+      stabilization_minutes: 60
+      ac_input: "100-240 VAC +/-10%, 50/60 Hz, 50 VA max"
+      rack_height_mm: 88             # ~2U - P0-DOC-01 S1 shows 3U, discrepancy to resolve
+      rackmount_kit: RKDAQ
+      digital_io:
+        alarm_outputs: 4
+        eom_output: 1
+        external_trigger_input: 1
+      dc_voltage_ranges_v: [0.1, 1, 10, 100, 600]
+      dc_voltage_input_protection_v: 600
+      resistance_ranges_ohm: [100, 1.0e3, 10.0e3, 100.0e3, 1.0e6, 10.0e6, 100.0e6, 1.0e9]
+      # 2-wire without math null adds 2 ohm error - decisive for harness continuity
+      resistance_2wire_without_null_extra_error_ohm: 2
+      resistance_100M_and_1G_are_2wire_only: true
+      dc_current_ranges_a: [1.0e-6, 10.0e-6, 100.0e-6, 1.0e-3, 10.0e-3, 100.0e-3, 2]
+      dc_current_input_fuse: "internal 250 V fuse for 2 A"
+
+    installed_modules: TBD           # MUST be physically recorded - see finding F-DAQ-01
+    # Reference data for whichever modules turn out to be installed.
+    module_catalog:
+      DM300: {channels: 20, current_channels: 0, switching: SOLID_STATE_2W,   scan_ch_per_s: 450, max_voltage_v: 120, max_current_a: null, four_wire: true,  notes: "two 10-ch banks, fully isolated, CJC built in"}
+      DM301: {channels: 20, current_channels: 2, switching: ARMATURE_2W,      scan_ch_per_s: 80,  max_voltage_v: 300, max_current_a: 1,    four_wire: true,  notes: "2W and 4W mixable on same module, CJC built in"}
+      DM303: {channels: 40, current_channels: 0, switching: ARMATURE_1W,      scan_ch_per_s: 80,  max_voltage_v: 300, max_current_a: null, four_wire: false, notes: "common signal ground, floatable to 300 V, no current"}
+      DM304: {channels: 32, current_channels: 0, switching: MATRIX_4x8_2W,    scan_ch_per_s: null, max_voltage_v: 300, max_current_a: 1,   four_wire: null,  notes: "3 ms switching, expandable to 96 cross-points, DOES NOT connect to built-in DMM"}
+      DM309: {channels: 8,  current_channels: 2, switching: ARMATURE_2W,      scan_ch_per_s: 60,  max_voltage_v: 600, max_current_a: 2,    four_wire: true,  notes: "600 VDC / 400 Vrms, per-channel fuse in module, TC needs external CJC"}
+
+    channel_map: TBD                 # requires fixture schematic - P0-DOC-01 OBS-009
+    forbidden_route_combinations: TBD
+    approved_limits:
+      approved_max_voltage_v: TBD
+      approved_max_current_a: TBD
+
+    known_gaps:
+      - "F-DAQ-01: '60 channel with DM301' implies 3 x DM301; module list must be physically confirmed"
+      - "F-DAQ-02: DAQ cannot measure DUT current (1 A / 2 A max vs 240 A DUT)"
+      - "F-DAQ-03: 4-wire pairs bank-1 with bank-2 channels, halving usable 4-wire points"
+      - "Rack height 2U per datasheet vs 3U in P0-DOC-01 drawing S1"
+
+  oscilloscope:
+    equipment_id: EQ-007
+    role: Transient and waveform acquisition, current-probe measurement
+    model_expected: TEKTRONIX_TBS2104B
+    manufacturer: Tektronix
+    identity_verified_from_nameplate: false
+    serial_number: TBD
+    firmware_version: TBD
+    calibration_due: TBD
+    required: TBD
+
+    transport:
+      planned: LAN                   # per concept drawing S2 / COM-003
+      available: [LAN_10_100BASE_T, USB_TMC, GPIB_VIA_TEK_USB_488, WIFI_DONGLE]
+      resource: TBD
+      ip_address: TBD
+      production_transport_declared: false
+      wifi_policy: DISABLE_UNLESS_IT_APPROVED
+
+    command_register_status: BLOCKED
+    programming_manual: "MISSING - Tektronix 077-1149-xx, obtainable from tek.com"
+
+    capability:
+      bandwidth_mhz: 100
+      analog_channels: 4
+      max_sample_rate_gs_per_s_half_channel: 2
+      max_sample_rate_gs_per_s_all_channels: 1
+      record_length_points: 5000000
+      vertical_resolution_bits: 8
+      input_impedance_ohm: 1000000   # 1 Mohm ONLY - there is NO 50 ohm input
+      has_50_ohm_input: false
+      input_capacitance_pf: 13
+      sensitivity_v_per_div: {min: 0.001, max: 10}
+      max_input_vrms: 300            # CAT II, peaks <= +/-450 V
+      max_input_peak_v: 450
+      hardware_bandwidth_limit_mhz: 20
+      max_capture_duration_at_full_rate_all_channels_s: 0.005
+      timebase_accuracy_ppm: 25
+      deskew_range_ns: 100
+      acquisition_modes: [SAMPLE, PEAK_DETECT, AVERAGE, HI_RES, ROLL]
+      average_range: {min: 2, max: 512}
+      trigger_types: [EDGE, PULSE_WIDTH, RUNT]
+      probe_interface: TEKVPI
+      power: "100-240 VAC +/-10%, 47-63 Hz, 80 W max"
+      cooling_clearance_mm: 50       # left side and rear
+      rackmount_kit: RMB2040
+
+    channel_assignment: TBD
+    approved_limits:
+      approved_max_input_v: TBD
+
+    known_gaps:
+      - "8-bit vertical resolution and 5 ms full-rate record are hard ceilings on transient recipes"
+      - "TCPA400 is not a TekVPI probe - no automatic scaling on this scope (see current_measurement_chain)"
+
+  power_supply:
+    equipment_id: EQ-009
+    role: Controlled DUT DC source and regenerative load
+    model_expected: ITECH_IT_M3906B_32_240_PENDING_PHYSICAL_VERIFICATION
+    manufacturer: ITECH
+    # Drawing S2 labels this "REGGEAR DC POWER SUPPLY" - not an ITECH product name.
+    # See P0-DOC-01 OBS-001. Datasheet corroborates the model number and all ratings.
+    identity_verified_from_nameplate: false
+    serial_number: TBD
+    firmware_version: TBD
+    calibration_due: TBD
+    required: TBD
+
+    transport:
+      planned: LAN                   # per concept drawing S2 / COM-002
+      available: [LAN, USB, CAN, P_IO_DIGITAL, GPIB_OPTION_IT_E176, RS232_ANALOG_OPTION_IT_E177]
+      resource: TBD
+      ip_address: TBD
+      production_transport_declared: false
+
+    command_register_status: BLOCKED
+    programming_manual: MISSING
+    real_output_control_enabled: false     # stays false until engineer authorization
+
+    # THIS INSTRUMENT IS BIDIRECTIONAL AND REGENERATIVE - see finding F-PSU-01
+    bidirectional: true
+    regenerative: true
+    source_load_mode_is_front_panel_state: true
+    application_must_never_assume_source_mode: true
+
+    capability:
+      source:
+        voltage_v: {min: 0, max: 32}
+        current_a: {min: 0, max: 240}
+        power_w:   {min: 0, max: 6000}
+        setup_resolution: {voltage_v: 0.001, current_a: 0.01, power_w: 1, resistance_ohm: 0.001}
+        readback_resolution: {voltage_v: 0.001, current_a: 0.01, power_w: 1}
+        setup_accuracy: {voltage: "<=0.05% + 0.05%FS", current: "<=0.1% + 0.1%FS", power: "<=0.5% + 0.5%FS"}
+        readback_accuracy: {voltage: "<=0.05% + 0.05%FS", current: "<=0.1% + 0.1%FS", power: "<=0.5% + 0.5%FS"}
+        current_slew_rate_a_per_ms: 240
+        min_operation_voltage_at_240a_v: 0.5
+        load_resistance_cc_priority_ohm: {min: 0.005, max: 400}
+      load:
+        voltage_v: {min: 0, max: 32}
+        current_a: {min: -240, max: 240}
+        power_w:   {min: -6000, max: 6000}
+        series_ir_ohm: {min: 0, max: 0.06}
+        voltage_ripple: "<=80 mVpp / <=30 mV RMS"
+        rise_time_ms: {no_load: 30, full_load: 100}
+        fall_time_ms: {no_load: 60, full_load: 30}
+      remote_sense_compensation_v: 10
+      programming_response_time_ms: 0.1
+      operating_temperature_c: {min: 0, max: 40}
+      withstand_voltage_dc_to_ground_v: 200
+      withstand_voltage_ac_to_ground_v: 2100
+      cooling: AIR
+      rack_height_u: 1
+      source_modes: [CC, CV, CW, CR, CC_CV, CV_CR, CR_CC, CC_CV_CW_CR]
+      load_modes: [CC, CV, CP, CR]
+      protections: [OVP, OCP_BIDIRECTIONAL, OPP_BIDIRECTIONAL, OTP, VOLTAGE_TRANSIENT_DROP, ANTI_ISLANDING, GRID_DETECTION]
+      ac_input:
+        three_phase_v: {min: 200, max: 480}
+        single_phase_v: {min: 100, max: 240}
+        frequency_hz: [50, 60]
+        max_apparent_power_kva: 6.5
+        max_ac_current_a: 12.5        # HARD LIMIT - power derates at low line voltage
+        max_efficiency_pct: 90
+        power_factor: 0.99
+        # Worked examples from the datasheet - the 6 kW nameplate is NOT available at every line voltage
+        derating_examples:
+          - "3-phase, 200 Vac line: P = 200 * 12.5 * 1.732 = 4330 VA"
+          - "1-phase, 200 Vac phase: P = 200 * 12.5 = 2500 VA"
+
+    # Instrument protection trip points as printed. The source PDF's two-column layout makes
+    # column assignment ambiguous - VERIFY against the printed page before encoding.
+    # These are the outer envelope, NOT test limits.
+    protection_trip_as_printed:
+      verification_required: true
+      ocp_a: [244.8, 247.2]
+      ovp_v: [33, 35]
+      opp_w: 6120
+
+    approved_limits:
+      approved_voltage_ceiling_v: TBD
+      approved_current_ceiling_a: TBD
+      approved_power_ceiling_w: TBD
+      approved_discharge_time_s: TBD
+
+    known_gaps:
+      - "F-PSU-01: bidirectional source/load with grid regeneration - belongs in facility electrical review"
+      - "P-IO pinout not published; candidate hardwired interlock path (COM-008)"
+      - "Nameplate photograph still required to close OBS-001"
+
+# ---------------------------------------------------------------------------
+# ANALOG CURRENT-MEASUREMENT CHAIN
+# Not a bus-connected instrument. Recorded here because the scale factor is a
+# reviewed configuration value that the application must apply itself.
+# ---------------------------------------------------------------------------
+current_measurement_chain:
+  equipment_ids: [EQ-008, EQ-014]
+  amplifier:
+    model: TEKTRONIX_TCPA400
+    identity_verified_from_nameplate: false
+    bandwidth: "DC - 50 MHz (amplifier); the probe is the limiting element"
+    power: "90-264 V, 47-440 Hz, 50 W, CAT II, auto-switching"
+    # Degauss, probe-open, overload and 'not terminated into 50 ohm' are FRONT-PANEL LEDs ONLY.
+    status_flags_machine_readable: false
+
+  probe:
+    # The TCPA400 has exactly one compatible probe.
+    model_required: TEKTRONIX_TCP404XL
+    physically_confirmed: false
+    bandwidth: "DC - 2 MHz"
+    rise_time_ns: 175
+    dc_accuracy_guaranteed_pct_of_reading: 3
+    dc_accuracy_typical_pct_of_reading: 1
+    sensitivity_range: "1 A/mV"
+    max_dc_continuous_a: 500
+    max_dc_derated_a: 750
+    max_rms_sinusoidal_a: 500
+    max_peak_a: 750
+    lowest_measurable_current_a: 1
+    displayed_rms_noise_a: 0.25
+    signal_delay_to_output_bnc_ns: 80
+    max_conductor_size_mm: [21, 25]
+    max_wire_voltage: "600 V CAT I & II bare; 300 V CAT III insulated"
+    ac_coupled_lf_bandwidth_hz: 7
+    cable_length_m: 8
+
+  # F-TCPA-01: the TBS2000B series is NOT on Tektronix's automatic-scaling list for the
+  # TCPA300/400 family. The scope reads VOLTS. The application converts.
+  scaling:
+    automatic_scaling_supported: false
+    conversion_required_in_software: true
+    amplifier_range_setting: "1 A/mV"          # MUST be confirmed on the front panel
+    amps_per_volt: 1000
+    formula: "I_amps = V_scope_volts * amps_per_volt"
+    scale_factor_reviewed: false
+    # Store the amplifier range setting WITH EVERY RUN RECORD. If the range is changed,
+    # results captured before the change become wrong and are not recoverable without it.
+    must_be_recorded_per_run: true
+
+  # F-TCPA-02: TBS2104B has no 50 ohm input. An external feedthrough terminator is required.
+  termination:
+    scope_has_50_ohm_input: false
+    external_50_ohm_feedthrough_required: true
+    tektronix_part: "011-0049-02"
+    present: UNKNOWN_VERIFY
+
+  adapters:
+    tekvpi_to_bnc_adapter_required: true
+    tektronix_part: "TPA-BNC"
+    present: UNKNOWN_VERIFY
+
+  unresolved:
+    conductor_measured: TBD          # which conductor the probe surrounds
+    polarity: TBD
+    scope_channel: TBD
+    deskew_ns: TBD                   # 80 ns probe delay; scope deskew range is +/-100 ns
+    calibration_due: TBD
+
+  usage_constraints:
+    - "Guaranteed accuracy +/-3% of reading: a 240 A reading carries +/-7.2 A uncertainty. No pass/fail limit tighter than that is defensible."
+    - "Noise floor ~250 mA RMS and 1 A minimum: leakage and quiescent-current tests must NOT use this chain."
+    - "Probe health flags are not readable over any bus - operator checklist item, not a software check."
+
+# ---------------------------------------------------------------------------
+# NON-INSTRUMENT EQUIPMENT still requiring definition
+# ---------------------------------------------------------------------------
+unresolved_equipment:
+  rack_kit:
+    equipment_id: EQ-010
+    labelled_in_drawing: "B&K IT-E151 Rack Kit"
+    probable_actual: "ITECH IT-E155A / IT-E155B / IT-E155C rack mount kit"
+    rationale: "IT-E155A/B/C is the rack mount kit in the ITECH accessory list; IT-E151 does not appear. See finding F-PSU-02."
+    is_powered_equipment: PROBABLY_NOT_VERIFY
+    verification_required: true
+
+  anti_reverse_protection_unit:
+    # Not in the drawings. Raised because a 240 A bidirectional supply feeding an
+    # automotive harness is exactly the case ITECH sells this accessory for.
+    itech_parts: ["IT-E165A-250 (750V/250A)", "IT-E165A-400 (750V/400A)", "IT-E165A-500 (900V/400A)", "IT-E165B anti-EMF 1200V/200A"]
+    installed: UNKNOWN_CHECK_AND_RAISE_WITH_ENGINEER
+
+  control_and_safety_panel:
+    equipment_id: EQ-011
+    schematic: MISSING
+    status: FULLY_OPEN
+
+  ac_distribution_breaker_contactor:
+    equipment_id: EQ-013
+    schematic: MISSING
+    status: FULLY_OPEN
+
+  fixture:
+    equipment_id: null
+    schematic: MISSING
+    connector_pin_map: MISSING
+    relay_route_table: MISSING
+    forbidden_combinations: MISSING
+    status: FULLY_OPEN
+
+  network:
+    equipment_id: EQ-002
+    device_type: UNKNOWN_ROUTER_OR_SWITCH
+    model: TBD
+    ip_plan: TBD
+    it_approval: NOT_OBTAINED
