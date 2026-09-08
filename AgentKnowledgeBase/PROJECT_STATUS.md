@@ -2,7 +2,7 @@
 
 **Project:** Vehicle Harness Functional Tester
 **Last updated:** 2026-09-08
-**Updated by:** P0 internet research pass (follows the datasheet extraction pass)
+**Updated by:** P0 uploaded-manuals extraction pass
 **Current phase:** P0 — Requirements, documentation and safety inputs
 **Current gate:** **INCONCLUSIVE**
 
@@ -30,8 +30,9 @@
 |---|---|
 | `P0-DOC-01_equipment_and_communication_inventory.md` | Draft — INCONCLUSIVE, awaiting physical verification |
 | `P0-DOC-02_instrument_datasheet_extract.md` | Draft — PARTIAL. **Two conclusions corrected by P0-DOC-03; read them together** |
-| `P0-DOC-03_internet_research_findings.md` | Draft — PARTIAL (1 of 3 missing manuals recovered; 2 blocked by network policy, not availability) |
-| `command_register.md` | Draft — **0 approved entries**, 2 of 4 instruments transcribed, 2 blocked |
+| `P0-DOC-03_internet_research_findings.md` | Draft — PARTIAL. **§4.1 corrected by P0-DOC-04 §6** |
+| `P0-DOC-04_uploaded_manuals_extract.md` | Draft — PARTIAL. Extract of the 5 manuals uploaded 2026-09-08 |
+| `command_register.md` | Draft — **0 approved entries**. 2 transcribed, 1 **provisional**, 1 blocked |
 | `instrument_profiles.yaml` | Draft — unreviewed, simulation only |
 | `NEXT_STEP_BRIEF.md` | Current — Phase 1 scope and coding prompt |
 | `COPILOT_PROMPTS.md` | Current — Phase 1 as five sequenced GitHub Copilot prompts |
@@ -42,8 +43,11 @@
 | Safety-panel and AC-distribution schematics | **MISSING** |
 | DAQ3120 programming manual | ✅ **RETRIEVED** — `manuals/DAQ3120_programming_manual.pdf`, 139 pp, v2026-01-07 |
 | DAQ3120 user manual | Read (147 pp); **not committed — 134 MB**, URL in `P0-DOC-03` §5 |
-| Tektronix programmer manual `077-1149-xx` | **MISSING** — URL identified, download blocked by network policy |
-| ITECH IT-M3906B user + programming manual (incl. P-IO pinout) | **MISSING** — URLs identified, download blocked by network policy |
+| Tektronix TBS2000**B** programmer manual | **STILL MISSING** — `manuals/TBS2000-Programmer-077114902.pdf` is the **non-B** series |
+| ITECH IT-M3900B **User Manual** | ✅ **RECEIVED** — `manuals/IT-M3900B-User-Manual.pdf`, 348 pp. **P-IO pinout closed** |
+| ITECH IT-M3900B **Programming Guide** | **STILL MISSING** — the uploaded PV3900 file is PC software, no SCPI |
+| TCPA300/400 user manual | ✅ **RECEIVED** — `manuals/TCPA300-400-…-077118302.pdf`, 82 pp |
+| ITECH rack mount kit guide | ✅ **RECEIVED** — resolves T-15 |
 
 ---
 
@@ -73,6 +77,9 @@
 | D-10 | DMMs are enumerated by USB VID `0x10C4` + PID `0xEA60` + serial, never by COM-port order | CP210x bridge confirmed from B&K's own driver `.inf` |
 | D-11 | `TPA-BNC` removed from the required-parts list | TekVPI accepts plain BNC directly; the adapter buys nothing without auto-scaling |
 | D-12 | Degauss/autobalance becomes a mandatory pre-test operator step | The 50 Ω termination fault is detected only during degauss |
+| D-13 | The Tektronix register is `TRANSCRIBED-PROVISIONAL`: simulated-driver design only, never Real mode | The manual in `manuals/` is TBS2000, not TBS2000**B**, and states a 2500-point limit against this instrument's 5 M points (F-SCOPE-01) |
+| D-14 | If P-IO pin 5 is used in the safety chain it must be `Inhibit→Latch`, never the default `Living` | `Living` auto-recovers output when the signal is released, and the front panel still reads `On` (F-PSU-03) |
+| D-15 | The 50 Ω feedthrough is fitted at the **oscilloscope** end, never the amplifier end | Stated explicitly in the TCPA300/400 user manual |
 
 ---
 
@@ -81,8 +88,8 @@
 | ID | Item | Owner | Target |
 |---|---|---|---|
 | ~~T-01~~ | ~~DAQ3120 programming manual~~ | — | ✅ **CLOSED 2026-09-08** |
-| T-02 | Tektronix programmer manual `077-1149-xx` — **URL in `P0-DOC-03` §5 #1**. *Upload attempted 2026-09-08; not present on `main` — re-check the commit landed* | **TBD** | **TBD** |
-| T-03 | ITECH IT-M3906B manual **incl. P-IO pinout** — **URLs in `P0-DOC-03` §5 #2, #3**. *Upload attempted 2026-09-08; not present on `main` — re-check the commit landed* | **TBD** | **TBD** |
+| T-02 | Tektronix **TBS2000B** programmer manual — non-B version received, **B version still needed**. URL in `P0-DOC-03` §5 #1 | **TBD** | **TBD** |
+| T-03 | ITECH **Programming Guide** — User Manual received (P-IO closed), **Programming Guide still needed**. URL in `P0-DOC-03` §5 #2 | **TBD** | **TBD** |
 | T-04 | Fixture schematic, pin map, route table, forbidden combinations | **TBD** | **TBD** |
 | T-05 | Safety-panel / contactor / AC-distribution schematics (COM-008) | **TBD** | **TBD** |
 | T-06 | Engineer-approved V / I / P / discharge-time ceilings | **TBD** | **TBD** |
@@ -94,10 +101,12 @@
 | T-12 | Remote-sense (Vs+/Vs−) landing point and fault handling | **TBD** | **TBD** |
 | T-13 | Facility three-phase feed vs. 6.5 kVA / 12.5 Aac derating | **TBD** | **TBD** |
 | T-14 | Whether an ITECH anti-reverse protection unit is installed | **TBD** | **TBD** |
-| T-15 | Is the **correct** rack kit fitted to the supply? IT-M3900B 1U needs `IT-E155A` (+B or C), not `IT-E151` | **TBD** | **TBD** |
+| ~~T-15~~ | ~~Correct rack kit~~ — ✅ **ANSWERED 2026-09-08**: `IT-E155A` mandatory. `IT-E151` is for half-rack **2U** instruments — wrong kit. *Photograph the installed part to confirm which is fitted* | **TBD** | **TBD** |
 | T-16 | CP210x serial-collision test with **both** DMMs connected (R-DMM-02) | **TBD** | **TBD** |
 | T-17 | Current CP210x VCP driver for Win10/11 — the bundled one is from 2012 | **TBD** | **TBD** |
-| T-18 | Confirm the 50 Ω feedthrough in the TCPA400 accessory kit before ordering one | **TBD** | **TBD** |
+| T-18 | Confirm the 50 Ω feedthrough in the TCPA400 accessory kit before ordering one — **fit it at the scope end** | **TBD** | **TBD** |
+| T-19 | Engineer decision: do P-IO pins 1, 2, 3, 5 form part of the safety architecture, and in which inhibit mode? | **TBD** | **TBD** |
+| T-20 | Network policy: ITECH default IP `192.168.200.100`, telnet 23, and a **web firmware-upload page** | **TBD** | **TBD** |
 
 ---
 
@@ -111,6 +120,11 @@
 | F-TCPA-01 | No automatic probe scaling on the TBS2000B — software must convert V→A. |
 | F-TCPA-02 | TBS2104B has no 50 Ω input; external feedthrough required; amplifier fault flags are not machine-readable. |
 | F-PSU-01 | Supply is bidirectional and grid-regenerative; Source/Load is a front-panel state. Belongs in the facility electrical review. |
+| **F-PSU-03** | P-IO pin 5 `Inhibit-Living` is the **factory default** and **auto-recovers** output when the signal is released, while the front panel still reads `On`. Only `Inhibit-Latch` requires manual restoration. |
+| **F-PSU-04** | The ITECH web interface exposes a **firmware upload** page; default IP is a published constant. |
+| **F-SCOPE-01** | The non-B programmer manual states a **2500-point** waveform limit; this scope has **5 M points**. Carrying the constant over silently truncates to 0.05% of the acquisition with no error. |
+| **F-TCPA-03** | The probe slide must be **locked closed** to measure or degauss; `PROBE OPEN` is a front-panel LED only. |
+| **F-TCPA-04** | The circuit **must be de-energized** when fitting or removing the current probe on uninsulated wire. |
 | F-PSU-02 | "IT-E151 Rack Kit" is almost certainly ITECH `IT-E155A/B/C` — and should not be drawing AC power. |
 | — | DAQ3120 rack height is 2U per datasheet vs 3U in drawing S1. |
 | — | 2831E `:FETCh?` staleness hazard; no machine-readable error status; low-Ω ranges specified only under REL. |

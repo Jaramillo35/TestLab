@@ -13,13 +13,14 @@ Every row carries a **Review status**. Only `APPROVED` entries may ever be trans
 
 | Status | Meaning |
 |---|---|
-| `TRANSCRIBED` | Syntax copied verbatim from a manufacturer manual in this repo, with page citation. **Not yet reviewed. Not yet bench-verified. Simulation use only.** |
+| `TRANSCRIBED` | Syntax copied verbatim from a manufacturer manual in this repo **for the exact model**, with page citation. Not yet reviewed. Not yet bench-verified. Simulation use only. |
+| `TRANSCRIBED-PROVISIONAL` | Syntax from a manufacturer manual for a **related but different series**. Usable to design and unit-test a *simulated* driver only. **Never in Real mode.** Every entry must be re-verified against the correct-model manual, and no constant from it may be hard-coded. |
 | `BLOCKED` | No manufacturer programming manual is available for this instrument. **No command may be written, guessed, or adapted from a sibling model.** |
 | `APPROVED` | Reviewed by a named engineer against the manual for the exact model *and firmware*, and bench-verified. **Currently: none.** |
 
 **Firmware caveat.** Every `TRANSCRIBED` entry below is transcribed from a manual whose own example `*IDN?` response is `2831E Multimeter,Ver1.0.09.12.03`. If the installed unit reports a different firmware version, **every entry reverts to unverified** until re-checked against the matching manual revision.
 
-**Current count: 0 APPROVED. 2 of 4 instruments fully BLOCKED.**
+**Current count: 0 APPROVED. 1 of 4 instruments fully BLOCKED (ITECH). 1 provisional (Tektronix).**
 
 ---
 
@@ -29,8 +30,8 @@ Every row carries a **Review status**. Only `APPROVED` entries may ever be trans
 |---|---|---|---|
 | B&K 2831E DMM ×2 | **Yes** — `bk_precision_2831e_manual.pdf` | USB Virtual COM (serial, CP210x), 8N1, 9600 default, `<LF>` or `<CR>` | `TRANSCRIBED` |
 | B&K DAQ3120 | **Yes** — `manuals/DAQ3120_programming_manual.pdf` | LAN / USBTMC / USBVCP / micro-GPIB | `TRANSCRIBED` |
-| Tektronix TBS2104B | **No** (programmer manual is `077-1149-xx`) | LAN / USBTMC | `BLOCKED` |
-| ITECH IT-M3906B-32-240 | **No** | LAN / USB / CAN / P-IO | `BLOCKED` |
+| Tektronix TBS2104B | **Wrong series** — `manuals/TBS2000-Programmer-077114902.pdf` is TBS2000, not TBS2000**B** | LAN / USBTMC | `TRANSCRIBED-PROVISIONAL` |
+| ITECH IT-M3906B-32-240 | **No programming guide.** User manual present (`manuals/IT-M3900B-User-Manual.pdf`) — hardware interfaces only | LAN / USB / CAN / P-IO | `BLOCKED` |
 
 ---
 
@@ -443,24 +444,65 @@ SYST:ERR?                             # CR-DAQ-101  confirm no error was raised
 
 ---
 
-## 4. Tektronix TBS2104B — BLOCKED
+## 4. Tektronix TBS2104B — TRANSCRIBED-PROVISIONAL (wrong-series source)
 
-**Manual in repo:** none. `Tektronix_TBS2104b.pdf` is a datasheet.
-**Required document:** Tektronix programmer manual **`077-1149-xx`**, named in the datasheet's Standard Accessories list (p.14) and available from tek.com.
+**Source document:** `manuals/TBS2000-Programmer-077114902.pdf` (SRC-11) — *TBS2000 Series Digital Oscilloscopes Programmer*, `077-1149-02` Rev A, 342 pp.
+**Model scope: TBS2000 series. Our instrument is a TBS2104B — TBS2000B series.**
+**Reviewer:** *(none)* · **Bench verification:** *(none)*
 
-| ID | Item | Status |
+> ### ⚠ Why this is PROVISIONAL and not TRANSCRIBED
+>
+> Tektronix publishes a **separate** TBS2000B programmer manual; the existence of a separate publication is itself evidence the two differ. SRC-11 mentions `TBS2000B` exactly once — a B-specific `*IDN?` response format on p.168 — which shows awareness of the B series, not coverage of it.
+>
+> **A concrete, proven difference (F-SCOPE-01).** SRC-11 pp.34 and 53 state that waveforms are **≤2500 data points** and that *"the instrument truncates waveforms longer than 2500 data points"*, and that `DATa:STOP 2500` *"always sends the entire waveform"*. **The TBS2104B has a 5 M point record** — 2500 points is **0.05%** of it. A driver carrying that constant over would return a plausible waveform that silently discards 99.95% of the acquisition, with no error raised.
+>
+> **Permitted:** designing and unit-testing the *simulated* scope driver in Phase 1, which touches no hardware.
+> **Forbidden:** any use in Real mode; hard-coding any record-length, preamble or scaling constant from this manual; treating any entry as verified for the TBS2104B.
+> **To promote to `TRANSCRIBED`:** obtain the TBS2000B programmer manual (`P0-DOC-03` §5 #1) and re-verify every entry, `DATa:STOP` and record-length handling first.
+
+### 4.1 Command groups (SRC-11 TOC)
+
+Acquisition · Alias · Bus · Calibration · Cursor · Display · Ethernet · File System · Hard Copy · Horizontal · Math · Measurement · Miscellaneous · Save and Recall · Status and Error · Trigger · Vertical · **Waveform** · Zoom
+
+### 4.2 Core commands — PROVISIONAL
+
+| ID | Command | Notes |
 |---|---|---|
-| `CR-TBS2104B-000` | Entire command set | **BLOCKED** |
+| `CR-TBS-P001` | `*IDN?` | `TEKTRONIX,<model>,<serial>,CF:91.1CT FV:v<fw>`. **TBS2000B returns a different format** adding `TBS2XXXV:v<module fw>` (SRC-11 p.168) |
+| `CR-TBS-P002` | `ACQuire:STATE` | Start/stop acquisitions |
+| `CR-TBS-P003` | `ACQuire:STOPAfter` | When to stop acquiring |
+| `CR-TBS-P004` | `ACQuire:MODe` | SAMple \| PEAKdetect \| AVErage \| HIRes |
+| `CR-TBS-P005` | `ACQuire:NUMAVg` | Averaging count |
+| `CR-TBS-P006` | `ACQuire:NUMACq?` | Acquisitions taken |
+| `CR-TBS-P007` | `SELect:CH<x>` | Channel display on/off |
+| `CR-TBS-P008` | `MEASUrement:IMMed:VALue?` | Immediate measurement result |
+| `CR-TBS-P009` | `CURVe` / `CURVe?` | Waveform data transfer, binary or ASCII |
+| `CR-TBS-P010` | `DATa:SOUrce` | Which waveform to transfer |
+| `CR-TBS-P011` | `DATa:STARt` / `DATa:STOP` | **DANGER — see F-SCOPE-01. Do not carry 2500 over.** |
+| `CR-TBS-P012` | `DATa:WIDth` | Bytes per data point |
+| `CR-TBS-P013` | `DATa:ENCdg` | `ASCII` \| `RIBinary` \| `RPBinary` \| `SRIbinary` \| `SRPbinary` |
+| `CR-TBS-P014` | `WAVFrm?` | Returns `WFMPre?` + `CURVe?` together |
+| `CR-TBS-P015` | `WFMPre:` / `WFMInpre:` | Preamble: `XINcr`, `BIT_Nr`, `BYT_Nr`, `NR_Pt?` — scaling source |
+| `CR-TBS-P016` | `BUSY?` | Instrument status |
+| `CR-TBS-P017` | `*OPC` / `*OPC?` / `*WAI` | Synchronization |
 
-Do not carry over command knowledge from TDS/DPO/MDO/MSO series. Waveform-transfer commands in particular (preamble, encoding, byte order, scaling) differ between families and a wrong preamble assumption produces **plausible but wrong numbers**, which is worse than an error.
+### 4.3 Waveform encoding — PROVISIONAL
 
-**Additional non-command requirement:** because automatic probe scaling does not apply to this scope with the TCPA400 (see `P0-DOC-02` §5.3), the application must apply the **1 A/mV → 1000 A/V** factor itself. That scale factor is a **reviewed configuration value**, and belongs in the reviewed configuration file — not in a driver constant.
+Internally 8 bits per point regardless of acquisition mode. `DATa:WIDth 2` multiplies by 256 on send, truncates (divides by 256) on receive. Binary ranges: 1 byte signed −128…127 / unsigned 0…255; 2 byte signed −32768…32767 / unsigned 0…65535. `RIBinary`/`RPBinary` MSB-first; `SRIbinary`/`SRPbinary` LSB-first; byte order ignored when `DATa:WIDth` is 1.
 
----
+### 4.4 Socket server
+
+Enabled from the front panel: `Utility → Config → Socket Server`, protocol `None` or `Terminal`, port settable. **No default port is stated in SRC-11 — read it off the instrument.**
+
+### 4.5 Non-command requirement, unchanged
+
+Automatic probe scaling does not apply to this scope with the TCPA400 (`P0-DOC-02` §5.3). The application applies **1 A/mV → 1000 A/V** itself, from reviewed configuration, never a driver constant.
 
 ## 5. ITECH IT-M3906B-32-240 — BLOCKED (highest hazard)
 
-**Manual in repo:** none. `IT-M3906B-32-240_en.pdf` is a series datasheet.
+**Commands: still BLOCKED.** The **Programming Guide is not in this repo.** `manuals/IT-M3900B-User-Manual.pdf` (SRC-10, 348 pp) is the *User Manual*; it documents operation and hardware interfaces but contains **no SCPI command set**, and explicitly defers to a separate publication (SRC-10 p.73: *"please refer to the instructions of 'ARB Subsystem' in the Programming Guide"*). `itech-it-m3900b-pv3900-software-user-manual.pdf` is the PV3900 **PC software** manual and contains zero SCPI.
+
+**To unblock:** `https://cdn.itechate.com/uploadfiles/%E7%94%A8%E6%88%B7%E6%89%8B%E5%86%8C/user%20manual/it-m3900b/IT-M3900B%20Programming%20Guide-EN.pdf`
 
 | ID | Item | Status |
 |---|---|---|
@@ -469,7 +511,7 @@ Do not carry over command knowledge from TDS/DPO/MDO/MSO series. Waveform-transf
 | `CR-ITM3906B-002` | Voltage / current / power setpoints | **BLOCKED** |
 | `CR-ITM3906B-003` | Source ↔ Load mode selection | **BLOCKED** |
 | `CR-ITM3906B-004` | Protection (OVP / OCP / OPP) configuration | **BLOCKED** |
-| `CR-ITM3906B-005` | P-IO digital I/O behaviour and pinout | **BLOCKED — pinout not published in the datasheet** |
+| ~~`CR-ITM3906B-005`~~ | P-IO digital I/O pinout | ✅ **DOCUMENTED** — see §5.1 below (SRC-10 §6.11). This is a *hardware interface*, not a command. |
 
 This instrument can source **6 kW at up to 240 A**, can **sink** current, and can **feed energy back into the building supply**. It is the single most dangerous device on the station.
 
@@ -480,6 +522,46 @@ Constraints that hold **regardless** of what the manual eventually says:
 3. The **Source/Load mode is a front-panel state** (datasheet p.4). The application must read and display it and must never assume Source.
 4. `P-IO` is a candidate hardwired interlock/inhibit path (COM-008). Its pinout must come from the manual and its use must be decided by the responsible engineer — **not inferred**.
 5. Approved voltage/current/power ceilings (`P0-DOC-01` §9 placeholders) must be set and reviewed **before** any setpoint command is enabled, and they are **not** the instrument's protection trip points.
+
+### 5.1 P-IO digital interface — DOCUMENTED (SRC-10 §6.11, pp.189–204)
+
+Not commands — a hardware interface. Recorded here because it is the candidate safety path (COM-008).
+
+| Pin | Default function | Signal |
+|---:|---|---|
+| 1 | `Ps-Fault-Clear` — clear the protection state | Pulse |
+| 2 | `Ps` — protection state indicator | Level |
+| 3 | `Off-Status` — On/Off status indicator | Level |
+| 4 | `Trig(in)` — trigger signal | Pulse |
+| 5 | **`INH-Living` — turn off the output under emergency status** | Pulse |
+| 6 | `Sync-On` — synchronous on control | Pulse |
+| 7 | `Sync-Off` — synchronous off control | Pulse |
+| GND | Ground, negative terminal for all 7 pins | Level |
+
+Input high 1.6–15 V (typ 5 V), input low −5–0.8 V, ≤100 mA. Output 5 V / 0 V. Pulse: rise 10 µs, fall 2 µs, width 30 µs, min low hold 30 µs. All pulses switch **high → low**. Each pin has `Invert` / `Not-Invert`.
+
+> **F-PSU-03 — the default inhibit mode auto-recovers.**
+> `Inhibit-Living` (**factory default**): drive pin 5 low and output goes to 0, but the `[On/Off]` light **stays lit** and the VFD **still displays `On`** (with `INH`); *"when pin 5 receives high level signal again, the output state is recovered"* — **automatically, with no human action**.
+> `Inhibit-Latch`: a pulse turns `[On/Off]` **off** and latches; *"the user needs to manually turn on `[On/Off]`"*.
+>
+> **Only `Inhibit-Latch` is defensible in a safety tie-in.** A 240 A output that re-energizes by itself when a contact recloses is not acceptable. And under `Inhibit-Living` the front panel reads `On` while the output is 0 — the panel does not tell an operator the truth about the hazard.
+>
+> This remains a **control input on the instrument**. It is never a substitute for hardwired removal of hazardous energy that works with the PC and the instrument both powered off. Pins **2** and **3** are the interesting pair for software: level outputs that would make protection and output state *machine-observable* rather than inferred. Wiring any of this requires a reviewed schematic and the responsible engineer's decision.
+
+### 5.2 LAN and remote interfaces — DOCUMENTED (SRC-10 §2.5)
+
+| Item | Value |
+|---|---|
+| Default IP | **`192.168.200.100`** |
+| Telnet port | **23** |
+| Socket port | Configurable; must match on both ends |
+| Max connections | **6** simultaneous socket + telnet, any combination |
+| Termination | All commands and query responses terminated with a **newline** |
+| Web server | `http://<ip>` — Home, Information, Web Control, Manual, **Upload (firmware upgrade)** |
+| CAN | `H`=CAN_H, `L`=CAN_L, `GND`=CAN_GND; address 0–127; baud 5k–1000k; protocol `DeviceNet` or `BMS` |
+| Self-test | `*TST?` → 0 pass, 1 fail |
+
+> **F-PSU-04:** the web interface exposes a **firmware upload** page and the default IP is a published constant. Both belong in the network policy decision (OBS-006, T-10).
 
 ---
 

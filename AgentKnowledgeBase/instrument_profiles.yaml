@@ -26,6 +26,7 @@ derived_from:
   - P0-DOC-01_equipment_and_communication_inventory.md
   - P0-DOC-02_instrument_datasheet_extract.md
   - P0-DOC-03_internet_research_findings.md
+  - P0-DOC-04_uploaded_manuals_extract.md
   - command_register.md
 
 station:
@@ -40,11 +41,16 @@ safety:
   interlock_feedback_interface: TBD
   contactor_feedback_interface: TBD
   output_off_verification_interface: TBD
-  # Candidate hardwired interlock/inhibit path identified in P0-DOC-02 6.4.
-  # Pinout is NOT published in the datasheet. Do not assume any pin behaviour.
+  # Candidate hardwired interlock/inhibit path. Pinout is now DOCUMENTED from the
+  # IT-M3900B user manual - see instruments.power_supply.p_io for the full table.
+  # It is a TTL control input on the instrument, NOT a safety-rated interface.
   psu_p_io_interface:
     present_on_instrument: true
-    pinout_source: MISSING_MANUAL
+    pinout_source: "manuals/IT-M3900B-User-Manual.pdf 6.11, pp.189-204"
+    safety_rated: false
+    inhibit_pin: 5
+    inhibit_mode_required_if_used: Latch    # Living auto-recovers - see F-PSU-03
+    machine_observable_feedback_candidates: [2, 3]   # Ps and Off-Status level outputs
     role_in_safety_chain: TBD_ENGINEER_DECISION
   notes: >
     Software may monitor safety state but must never replace the safety circuit.
@@ -281,9 +287,19 @@ instruments:
       ip_address: TBD
       production_transport_declared: false
       wifi_policy: DISABLE_UNLESS_IT_APPROVED
+      socket_server: "front panel Utility > Config > Socket Server; protocol None or Terminal"
+      socket_port: TBD              # no default stated in the provisional manual - read off the instrument
 
-    command_register_status: BLOCKED
-    programming_manual: "MISSING - Tektronix 077-1149-xx, obtainable from tek.com"
+    command_register_status: TRANSCRIBED_PROVISIONAL
+    programming_manual: "manuals/TBS2000-Programmer-077114902.pdf - WRONG SERIES (TBS2000, not TBS2000B)"
+    programming_manual_correct_model: "MISSING - Tektronix TBS2000B programmer manual"
+    # F-SCOPE-01: the non-B manual states a 2500-point waveform limit. THIS INSTRUMENT HAS
+    # 5,000,000 points. Carrying 2500 over would silently truncate to 0.05% of the acquisition
+    # with no error raised. Never hard-code a record-length constant from that manual.
+    provisional_source_record_length_points: 2500
+    actual_record_length_points: 5000000
+    provisional_use: SIMULATED_DRIVER_DESIGN_ONLY
+    provisional_forbidden_in_real_mode: true
 
     capability:
       bandwidth_mhz: 100
@@ -336,10 +352,21 @@ instruments:
       available: [LAN, USB, CAN, P_IO_DIGITAL, GPIB_OPTION_IT_E176, RS232_ANALOG_OPTION_IT_E177]
       resource: TBD
       ip_address: TBD
+      default_ip_address: 192.168.200.100  # published constant - change it, and record the change
+      telnet_port: 23
+      socket_port: TBD                     # configurable; must match on both ends
+      max_simultaneous_connections: 6      # socket + telnet, any combination
+      message_terminator: newline
+      web_interface: "http://<ip> - INCLUDES A FIRMWARE UPLOAD PAGE (F-PSU-04)"
+      web_interface_policy: DISABLE_UNLESS_IT_APPROVED
+      can: {h: CAN_H, l: CAN_L, gnd: CAN_GND, address_range: [0, 127], protocols: [DeviceNet, BMS]}
       production_transport_declared: false
 
     command_register_status: BLOCKED
-    programming_manual: MISSING
+    programming_manual: MISSING           # IT-M3900B Programming Guide - NOT the User Manual,
+                                          # and NOT the PV3900 software manual. Both of those are
+                                          # in manuals/ and contain no SCPI.
+    user_manual: "manuals/IT-M3900B-User-Manual.pdf (348 pp) - hardware interfaces only"
     real_output_control_enabled: false     # stays false until engineer authorization
 
     # THIS INSTRUMENT IS BIDIRECTIONAL AND REGENERATIVE - see finding F-PSU-01
@@ -406,9 +433,49 @@ instruments:
       approved_power_ceiling_w: TBD
       approved_discharge_time_s: TBD
 
+    # P-IO digital interface - DOCUMENTED from the user manual (SRC-10 6.11).
+    # A hardware interface, not commands. TTL-level control input on the instrument -
+    # NEVER a substitute for hardwired removal of hazardous energy.
+    p_io:
+      documented: true
+      source: "manuals/IT-M3900B-User-Manual.pdf sections 6.11.1-6.11.7, pp.189-204"
+      safety_rated: false
+      input_high_v: {typical: 5, min: 1.6, max: 15, max_current_ma: 100}
+      input_low_v: {typical: 0, min: -5, max: 0.8, max_current_ma: 100}
+      output_v: {high: 5, low: 0}
+      pulse: {rise_slope_us: 10, fall_slope_us: 2, width_us: 30, min_low_hold_us: 30}
+      pulses_switch: HIGH_TO_LOW
+      pins:
+        1: {name: Ps-Fault-Clear, signal: pulse, note: "clears the protection state - safety review item"}
+        2: {name: Ps,             signal: level, note: "protection state indicator - MACHINE-OBSERVABLE candidate"}
+        3: {name: Off-Status,     signal: level, note: "On/Off status indicator - MACHINE-OBSERVABLE candidate"}
+        4: {name: Trig-in,        signal: pulse, note: "external trigger"}
+        5: {name: INH,            signal: pulse, note: "INHIBIT - see inhibit_modes below"}
+        6: {name: Sync-On,        signal: pulse, note: "synchronous on control"}
+        7: {name: Sync-Off,       signal: pulse, note: "synchronous off control"}
+        GND: {name: GND, signal: level, note: "negative terminal for all 7 pins"}
+      # F-PSU-03: the two inhibit modes are NOT equivalent and the DEFAULT is the wrong one.
+      inhibit_modes:
+        Living:
+          is_factory_default: true
+          control: level
+          behaviour: "low on pin 5 forces output to 0, but [On/Off] light stays lit and VFD still reads On (shows INH)"
+          auto_recovers: true      # output returns by itself when the signal is released
+          acceptable_for_safety_tie_in: false
+        Latch:
+          is_factory_default: false
+          control: pulse
+          behaviour: "pulse turns [On/Off] OFF and latches; VFD reads Off and Inhibit-Ps"
+          auto_recovers: false     # requires a human to manually turn [On/Off] back on
+          acceptable_for_safety_tie_in: CANDIDATE_ENGINEER_DECISION
+      configured_mode: TBD
+      role_in_safety_chain: TBD_ENGINEER_DECISION
+
     known_gaps:
       - "F-PSU-01: bidirectional source/load with grid regeneration - belongs in facility electrical review"
-      - "P-IO pinout not published; candidate hardwired interlock path (COM-008)"
+      - "F-PSU-03: default inhibit mode auto-recovers and the front panel still reads On - Latch is the only defensible mode"
+      - "F-PSU-04: web interface exposes firmware upload; default IP is a published constant"
+      - "Programming Guide still missing - no commands may be written"
       - "Nameplate photograph still required to close OBS-001"
 
 # ---------------------------------------------------------------------------
@@ -466,6 +533,9 @@ current_measurement_chain:
     external_50_ohm_feedthrough_required: true
     tektronix_part: "011-0049-02"
     present: UNKNOWN_VERIFY
+    # CONFIRMED from the TCPA300/400 user manual (SRC-12): fit it at the OSCILLOSCOPE end.
+    install_at: OSCILLOSCOPE_END        # "Do not install this termination at the amplifier end"
+    symptoms_if_missing: "slowed pulse response, increased aberrations, or incorrect DC measurement amplitudes"
     # R-TCPA-02 (P0-DOC-03 4.3): the feedthrough ships as a STANDARD ACCESSORY with the
     # TCPA300/400 - look in the amplifier's accessory kit before ordering one.
     likely_already_supplied_with_amplifier: true
@@ -473,6 +543,26 @@ current_measurement_chain:
     # A missing terminator otherwise produces a ~2x amplitude error that nothing flags.
     fault_detected_only_during_degauss: true
     degauss_is_mandatory_pre_test_step: true
+
+  # Confirmed from SRC-12. "Failure to degauss the probe is a leading cause of measurement errors."
+  degauss:
+    warmup_minutes: 20
+    required_when:
+      - "after amplifier power-on and the 20-minute warm-up"
+      - "before connecting the probe to a conductor"
+      - "after any current or thermal overload"
+      - "whenever a new probe is connected"
+      - "after exposure to a strong external magnetic field"
+      - "periodically during normal use"
+    procedure: "disconnect the probe from the test circuit OR ensure the conductor has no power, close and lock the slide, press PROBE DEGAUSS AUTOBALANCE"
+    led_flashes_until_done: true
+
+  # F-TCPA-03 / F-TCPA-04 - operator checklist items, not software checks
+  operator_requirements:
+    probe_slide_must_be_locked_closed: true      # PROBE OPEN is a front-panel LED only
+    probe_slide_state_machine_readable: false
+    circuit_must_be_de_energized_to_fit_or_remove_probe: true
+    scope_bandwidth_rule: "approximately 5x the probe bandwidth; TCP404XL is 2 MHz so ~10 MHz needed - the 100 MHz TBS2104B satisfies this comfortably"
 
   adapters:
     # CORRECTED by R-TCPA-01 (P0-DOC-03 4.2). The TekVPI connector is a plain BNC with extra
@@ -509,11 +599,14 @@ unresolved_equipment:
     # are associated with the IT6900 / IT6300 / IT6700 / IT8500+ families. The IT-M3900B 1U
     # models take IT-E155A (front), plus IT-E155B (rear) or IT-E155C (side) if the cabinet
     # has no tray. So the question is not "is the label a typo" but "is the CORRECT kit fitted".
+    # RESOLVED from ITECH's own selection guide (SRC-13).
     part_exists: true
-    correct_kit_for_this_chassis: "IT-E155A (+ IT-E155B or IT-E155C if no tray)"
-    if_it_e151_is_installed: RAISE_WITH_ENGINEER_LIKELY_WRONG_KIT
-    is_powered_equipment: PROBABLY_NOT_VERIFY
-    verification_required: true
+    it_e151_is_for: "half-rack-width 2U-high instruments mounted in 3U rack space - IT-M3100, IT-M3100D, IT-M3200, IT-M3300, IT-M3400, IT-M3600"
+    this_chassis: "full-rack width, 1U"
+    correct_kit_for_this_chassis: "IT-E155A (MANDATORY) + IT-E155B or IT-E155C if the cabinet has no tray"
+    if_it_e151_is_installed: WRONG_KIT_RAISE_WITH_ENGINEER
+    is_powered_equipment: false
+    verification_required: true   # photograph the installed part number
 
   anti_reverse_protection_unit:
     # Not in the drawings. Raised because a 240 A bidirectional supply feeding an

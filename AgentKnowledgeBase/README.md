@@ -11,6 +11,7 @@ Knowledge base for the **Vehicle Harness Functional Tester** project. Read in th
 | 3 | `P0-DOC-01_equipment_and_communication_inventory.md` | Equipment and planned communication inventory, from two planning drawings. |
 | 4 | `P0-DOC-02_instrument_datasheet_extract.md` | Every fact the manufacturer PDFs establish, with page citations — plus what they don't. **Two conclusions corrected by doc 5.** |
 | 5 | `P0-DOC-03_internet_research_findings.md` | What public manufacturer documentation added, what it corrected, and the exact URLs for the manuals still missing. |
+| 5b | `P0-DOC-04_uploaded_manuals_extract.md` | The five manuals uploaded 2026-09-08: ITECH **P-IO pinout**, the provisional Tektronix manual, TCPA degauss/termination, and the rack-kit answer. **Corrects P0-DOC-03 §4.1.** |
 | 6 | `command_register.md` | The only place a hardware command may come from. 0 approved entries today. |
 | 7 | `instrument_profiles.yaml` | Machine-readable configuration the application loads. |
 | — | `m365_copilot_agent_setup_for_harness_tester (1).md` | Configuration for the M365 coordinator agent. Reference. |
@@ -27,6 +28,11 @@ Knowledge base for the **Vehicle Harness Functional Tester** project. Read in th
 | `TCPA400.pdf` | Datasheet | No |
 | `IT-M3906B-32-240_en.pdf` | Datasheet | No |
 | `manuals/DAQ3120_programming_manual.pdf` | **Programming manual, 139 pp, v2026-01-07** | **Yes — full SCPI set** |
+| `manuals/IT-M3900B-User-Manual.pdf` | User manual, 348 pp | No — hardware interfaces + **P-IO pinout** |
+| `manuals/TBS2000-Programmer-077114902.pdf` | Programmer, 342 pp — **TBS2000, NOT TBS2000B** | **Provisional only** — simulated driver design, never Real mode |
+| `manuals/TCPA300-400-…-077118302.pdf` | User manual, 82 pp | No — degauss, termination, safety |
+| `manuals/ITECH-Rack-Mount-Kits-Selection-Guide.pdf` | Selection guide, 8 pp | No |
+| `manuals/itech-it-m3900b-pv3900-software-user-manual.pdf` | PC software manual, 107 pp | **No — contains zero SCPI** |
 
 ## Three rules that override anything else
 

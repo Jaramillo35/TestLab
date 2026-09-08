@@ -25,7 +25,8 @@ Where `P0-DOC-02` and `P0-DOC-03` disagree, **`P0-DOC-03` is newer and wins**.
 1. **Never invent, guess, autocomplete, adapt or translate a hardware command.**
    A SCPI / VISA / serial / socket / relay / power-output command may only appear in code if it is in `command_register.md` with a page citation from the manufacturer manual for that exact model. Quote it verbatim and put its register id (`CR-2831E-nnn`, `CR-DAQ-nnn`) in a comment.
    - **Transcribed today:** B&K 2831E (§2), B&K DAQ3120 (§3).
-   - **BLOCKED — no manual exists in this repo:** Tektronix TBS2104B, ITECH IT-M3906B. Their drivers raise `CommandNotAuthorized` for **every** operation. No exceptions, no "probably standard SCPI", nothing lifted from a datasheet, a wiki, a forum, a distributor page or another model in the same family.
+   - **PROVISIONAL — Tektronix TBS2104B (§4):** the manual in `manuals/` is the **TBS2000 series, not TBS2000B**. Its commands may be used to build and unit-test the *simulated* driver only. **Never in Real mode**, and **never hard-code a constant from it** — it states a 2500-point waveform limit while this instrument has 5,000,000 points (F-SCOPE-01). A driver carrying 2500 over would silently return 0.05% of the acquisition with no error.
+   - **BLOCKED — ITECH IT-M3906B (§5):** no Programming Guide exists in this repo. The user manual present covers hardware interfaces only. Its driver raises `CommandNotAuthorized` for **every** operation. No exceptions, no "probably standard SCPI", nothing lifted from a datasheet, a wiki, a forum, a distributor page or another model in the same family.
    - The 2831E `:READ?` and `:MEASure?` are referenced but never defined in its manual — **do not use them**.
 
 2. **A capability is not a limit.** Numbers in `P0-DOC-02` are what an instrument *can* do. Approved operating limits are all `TBD`. `TBD` means the application refuses that path in Real mode. Never substitute a datasheet maximum for an approved limit, and never default a `TBD` to zero or to the ceiling.
@@ -50,6 +51,9 @@ Where `P0-DOC-02` and `P0-DOC-03` disagree, **`P0-DOC-03` is newer and wins**.
 | DAQ channel ids | `(@<slot><ch>)` — slot 1 → `1xx`, 2 → `2xx`, 3 → `3xx`. Computed channels 401–420. |
 | DMM identification | Enumerate by USB VID `0x10C4` + PID `0xEA60` + serial. **Never hard-code a COM port.** Two meters may report the same CP210x serial — fail loudly, do not pick one. |
 | Current scaling | `I_amps = V_volts × amps_per_volt`, `amps_per_volt` read from config (1000 for the TCP404XL 1 A/mV range). Never hard-code it. Record the amplifier range with every run. |
+| Scope record length | Never hard-code `DATa:STOP` or any record-length constant. The provisional manual's 2500 is wrong for this instrument by a factor of 2000. |
+| Supply inhibit | P-IO pin 5 default `Inhibit-Living` **auto-recovers** and leaves the panel reading `On`. Never model or describe it as a safety interlock. Only `Inhibit-Latch` needs a human to restore output. |
+| Unobservable state | The TCPA400's degauss / probe-open / overload / termination flags and the probe slide lock are front-panel LEDs. Never render them as "safe" or "OK". |
 
 ## Stack and style
 
