@@ -36,6 +36,6 @@ Knowledge base for the **Vehicle Harness Functional Tester** project. Read in th
 
 ## Three rules that override anything else
 
-1. **Never invent a hardware command.** A command may be used only if it appears in `command_register.md` with a manual page citation for the exact model *and* firmware. Two of the four instruments are `BLOCKED` because their manuals are not here. Similarity to another model is not evidence, and neither is a search-engine summary, a distributor page, or a wiki — see the evidence tiers in `P0-DOC-03` §0.
+1. **Never invent a hardware command.** A command may be used only if it appears in `command_register.md` with a manual page citation for the exact model *and* firmware. One instrument (ITECH) is `BLOCKED` because its Programming Guide is not here; one (Tektronix) is `TRANSCRIBED-PROVISIONAL` because the manual present is the wrong series — simulated-driver design only, never Real mode. Similarity to another model is not evidence, and neither is a search-engine summary, a distributor page, or a wiki — see the evidence tiers in `P0-DOC-03` §0.
 2. **A capability is not a limit.** Every number in `P0-DOC-02` is what the instrument *can* do. Approved operating limits are all `TBD`, and `TBD` means the application refuses to run that path in Real mode.
 3. **Simulation-first, output off.** `real_mode_enabled` and `real_output_control_enabled` stay `false`. Simulation must never open VISA, serial, sockets, or any real instrument resource. Physical safety — E-stop, interlocks, contactors, fusing — must work without the PC.
