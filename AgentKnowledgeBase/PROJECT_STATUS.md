@@ -34,6 +34,9 @@
 | `command_register.md` | Draft — **0 approved entries**, 2 of 4 instruments transcribed, 2 blocked |
 | `instrument_profiles.yaml` | Draft — unreviewed, simulation only |
 | `NEXT_STEP_BRIEF.md` | Current — Phase 1 scope and coding prompt |
+| `COPILOT_PROMPTS.md` | Current — Phase 1 as five sequenced GitHub Copilot prompts |
+| `HANDOFF.md` | Current — resuming on another machine |
+| `.github/copilot-instructions.md` | Current — repo-wide Copilot operating envelope |
 | `m365_copilot_agent_setup_for_harness_tester (1).md` | Reference — coordinator agent configuration |
 | Fixture schematic / pin map / route table | **MISSING** |
 | Safety-panel and AC-distribution schematics | **MISSING** |
@@ -78,8 +81,8 @@
 | ID | Item | Owner | Target |
 |---|---|---|---|
 | ~~T-01~~ | ~~DAQ3120 programming manual~~ | — | ✅ **CLOSED 2026-09-08** |
-| T-02 | Tektronix programmer manual `077-1149-xx` — **URL in `P0-DOC-03` §5 #1** | **TBD** | **TBD** |
-| T-03 | ITECH IT-M3906B manual **incl. P-IO pinout** — **URLs in `P0-DOC-03` §5 #2, #3** | **TBD** | **TBD** |
+| T-02 | Tektronix programmer manual `077-1149-xx` — **URL in `P0-DOC-03` §5 #1**. *Upload attempted 2026-09-08; not present on `main` — re-check the commit landed* | **TBD** | **TBD** |
+| T-03 | ITECH IT-M3906B manual **incl. P-IO pinout** — **URLs in `P0-DOC-03` §5 #2, #3**. *Upload attempted 2026-09-08; not present on `main` — re-check the commit landed* | **TBD** | **TBD** |
 | T-04 | Fixture schematic, pin map, route table, forbidden combinations | **TBD** | **TBD** |
 | T-05 | Safety-panel / contactor / AC-distribution schematics (COM-008) | **TBD** | **TBD** |
 | T-06 | Engineer-approved V / I / P / discharge-time ceilings | **TBD** | **TBD** |

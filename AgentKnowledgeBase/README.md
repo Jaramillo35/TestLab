@@ -7,12 +7,14 @@ Knowledge base for the **Vehicle Harness Functional Tester** project. Read in th
 | 0 | `HANDOFF.md` | **New machine or new agent? Start here instead.** Clone-and-resume steps, machine requirements, state at handoff, and the gotchas. |
 | 1 | `PROJECT_STATUS.md` | **Start here.** Current phase, gate, decisions, open TBDs, single next action. |
 | 2 | `NEXT_STEP_BRIEF.md` | What to build next, the acceptance gate, and a ready-to-paste coding prompt. |
+| 2b | `COPILOT_PROMPTS.md` | **Driving GitHub Copilot?** The Phase 1 build as five sequenced, ready-to-paste prompts, plus what to reject when Copilot goes wrong. |
 | 3 | `P0-DOC-01_equipment_and_communication_inventory.md` | Equipment and planned communication inventory, from two planning drawings. |
 | 4 | `P0-DOC-02_instrument_datasheet_extract.md` | Every fact the manufacturer PDFs establish, with page citations — plus what they don't. **Two conclusions corrected by doc 5.** |
 | 5 | `P0-DOC-03_internet_research_findings.md` | What public manufacturer documentation added, what it corrected, and the exact URLs for the manuals still missing. |
 | 6 | `command_register.md` | The only place a hardware command may come from. 0 approved entries today. |
 | 7 | `instrument_profiles.yaml` | Machine-readable configuration the application loads. |
 | — | `m365_copilot_agent_setup_for_harness_tester (1).md` | Configuration for the M365 coordinator agent. Reference. |
+| — | `../.github/copilot-instructions.md` | Repo-wide rules GitHub Copilot loads automatically. Not optional context. |
 
 ## Source PDFs (repository root)
 
