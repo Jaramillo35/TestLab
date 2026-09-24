@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Operator setup and discovery sessions - Vehicle Harness Functional Tester</title>
+<meta name="description" content="Bench preparation for the B&amp;K 2831E multimeters and DAQ3120, front-panel settings, session plan S1-S7 and stop conditions.">
+<style>
+body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;max-width:60rem;
+margin:0 auto;padding:1.5rem;line-height:1.5;color:#1b1b1b;background:#fff}
+h1{font-size:1.6rem;margin:.2rem 0 .8rem}
+h2{font-size:1.2rem;margin:2rem 0 .4rem;padding-top:.6rem;border-top:1px solid #ddd}
+h3{font-size:1.05rem;margin:1.4rem 0 .3rem}
+pre{white-space:pre-wrap;word-wrap:break-word;background:#f6f7f8;padding:.8rem 1rem;
+border-radius:6px;font-size:.9rem;line-height:1.4;margin:.4rem 0}
+table{border-collapse:collapse;font-size:.9rem;margin:.6rem 0;display:block;overflow-x:auto}
+th,td{border:1px solid #ccc;padding:.3rem .5rem;vertical-align:top;text-align:left}
+code{font-size:.9em}
+.note{background:#fff8e1;border-left:4px solid #e0a800;padding:.6rem .9rem;margin:1rem 0}
+nav{font-size:.9rem;margin-bottom:1rem}
+footer{margin-top:3rem;font-size:.85rem;color:#555;border-top:1px solid #ddd;padding-top:.8rem}
+</style>
+</head>
+<body>
+<nav><a href="./">Vehicle Harness Functional Tester - discovery tool knowledge</a></nav>
+<h1>OPERATOR SETUP AND SESSION PLAN - discovery sessions</h1>
+<pre>Vehicle Harness Functional Tester
+Instruments: B&amp;K 2831E multimeters (x2) and B&amp;K DAQ3120
+Version: 2026-09-24
+
+Purpose: connect ONE instrument at a time, run the read-only discovery tool
+against it, and capture everything needed to build the GUI and the real
+drivers. Front-panel paths below were checked against the manufacturer manuals.
+
+KEY FACT: the 2831E identity string contains NO serial number. It answers
+&quot;2831E Multimeter,&lt;firmware&gt;&quot; and nothing else. Software cannot tell the two
+meters apart by asking them - only by the USB bridge&#x27;s serial string (which may
+be identical on both) or by which physical USB port they are plugged into.
+Session S4 exists to settle that.</pre>
+<h2>A0. RULES FOR EVERY SESSION</h2>
+<pre>  1. Only ONE instrument connected to the PC per session.
+     Exception: session S4 deliberately connects both meters.
+  2. The harness and fixture are NOT connected. Nothing in the 2831E input
+     jacks. No field wiring from the DAQ modules to anything that could be live.
+  3. The ITECH DC power supply stays OFF. The oscilloscope and current probe
+     are not part of these sessions.
+  4. Discovery is read-only by default. Only the optional &quot;active&quot; sessions
+     change a setting, and the tool restores the as-found values afterwards.
+  5. While at each instrument, photograph the front, rear and nameplate.
+
+  STOP and send back the results - do not go on to the next session - if:
+    - the tool reports any DAQ relay CLOSED as found
+    - the tool reports an identity other than &quot;2831E Multimeter&quot; or
+      &quot;B&amp;K Precision, DAQ3120&quot;
+    - a meter reports model 5491B (same manual, different ranges)
+    - anything is hot, smells, or trips</pre>
+<h2>A1. PC PREPARATION (once)</h2>
+<pre>  - Python 3.11 or newer.
+  - From the project folder:   pip install -r requirements-discovery.txt
+    (only pyserial, PyYAML and pytest - no NI-VISA or PyVISA needed)
+
+  Windows
+  - Install the CURRENT Silicon Labs &quot;CP210x VCP&quot; driver BEFORE plugging in a
+    meter. The driver B&amp;K ships is v6.6 from 2012 and predates Windows 10/11.
+  - After plugging in: Device Manager &gt; Ports shows
+    &quot;Silicon Labs CP210x USB to UART Bridge (COMx)&quot;.
+
+  Linux / Raspberry Pi
+  - The cp210x driver is built into the kernel; the meter appears as
+    /dev/ttyUSB0 (or similar).
+  - Give your user serial access once:
+        sudo usermod -aG dialout $USER     then log out and back in.
+
+  Network, for the DAQ
+  - Use a direct Ethernet cable or an isolated switch. NOT the company
+    network - the network design still needs IT approval.</pre>
+<h2>A2. EACH 2831E MULTIMETER (meter A first, then meter B)</h2>
+<pre>  Before power-on
+  1. Check the rear line-voltage selection matches the mains supply. The
+     manual warns the wrong line voltage can destroy the line fuses.
+  2. Nothing in the input jacks.
+  3. Put a physical label on the meter: DMM-A for the first, DMM-B for the second.
+
+  Read and write down from the front-panel menu (menu map: manual section 2.3)
+  4. C: SYS MEU &gt; 5: REVISION       model and firmware version
+  5. C: SYS MEU &gt; 2: BAUD RAT       factory default 9600; leave it at 9600
+                                    unless there is a reason
+  6. C: SYS MEU &gt; 3: TX TERM        LF or CR. LF recommended. Either works,
+                                    but the tool must be told which (--term).
+  7. B: TRIGGER MENU &gt; 1: TRIG MOD  as found
+
+  Connect
+  8. USB cable from the meter&#x27;s REAR &quot;USB Device&quot; port to the PC.
+  9. Always plug DMM-A into the same physical PC USB port, and DMM-B into a
+     different fixed port. Label those PC ports too. The physical port may
+     turn out to be the only reliable way to tell the meters apart.
+
+  During and after
+  10. The RMT annunciator lights while under remote control - expected.
+  11. When finished, press SHIFT then LOCAL to return to front-panel control.
+  12. If the ERR annunciator is lit afterwards, note it. Some per-function
+      queries may not answer while a different function is active; the
+      transcript shows which.
+  13. Never use the meter&#x27;s remote interface with anything connected to the
+      input jacks.</pre>
+<h2>A3. DAQ3120</h2>
+<pre>  Before power-on
+  1. Power OFF before inserting or removing any module - doing it while
+     powered reboots the unit. Do not change modules during these sessions.
+  2. Disconnect field wiring at the harness/fixture end so nothing on the
+     module terminals can be live. (Wiring is under each module&#x27;s top cover.)
+  3. Leave clearance at the sides and back for the cooling fan.
+  4. Write down which module is in which slot (read each module&#x27;s label) and
+     photograph them. Possible modules: DM300, DM301, DM303, DM304, DM307,
+     DM308, DM309.
+
+  Configure the LAN (user manual section 18.4)
+  5. MENU &gt; PAGE DOWN until INTERFACE CONFIGURATION &gt; LAN.
+  6. Write down what the screen shows: IP address, subnet mask, gateway, DHCP
+     on/off, and any socket or port number shown. The manual does not document
+     every field name and gives NO default IP address - record exactly what
+     the screen shows.
+  7. For a direct-cable bench session, a simple setup is:
+        DAQ:  DHCP off, IP 192.168.10.20, mask 255.255.255.0
+        PC:   static IP 192.168.10.10, mask 255.255.255.0
+     This is a bench-session example only. The production IP plan is open.
+  8. Check from the PC:   ping 192.168.10.20   (or the address you set)
+  9. The tool tries SCPI socket port 5025 first. That is the manual&#x27;s EXAMPLE;
+     the manual never calls it the default. If refused, open http://&lt;DAQ IP&gt;
+     in a browser with JavaScript enabled - the web interface shows the LAN
+     configuration. Leave telnet and the web interface as found; the report
+     records their state.
+
+  Optional second transport - USB (user manual section 18.2)
+  10. MENU &gt; PAGE DOWN &gt; INTERFACE CONFIGURATION &gt; USB &gt; USB - PROTOCOL &gt; CDC.
+      CDC makes the DAQ appear as a virtual COM port, so no VISA software is
+      needed. Use the rear USB Type-B port (upper port). Linux uses its
+      built-in CDC driver. Windows 10/11 normally has one too; if no COM port
+      appears, the B&amp;K USB driver is on the user-manual CD / B&amp;K website.
+
+  DO NOT - from the panel or anywhere else
+  - Turn the internal DMM on or off. Changing that setting forces a FACTORY
+    RESET of the DAQ and wipes its configuration. The tool reads it and never
+    changes it.
+  - Close or open relays, start scans, or run the self-test - except in the
+    optional session S6.
+
+  DAQ3120 rear-panel Digital I/O (DB-9 female) - for reference only
+    1-4  Alarm_OUT1..4 (TTL)   5  EOM out   6  External trigger in (pulse &gt;= 10 us)
+    7    Digital ground        8-9 not connected
+    These are TTL signalling pins, NOT a safety-rated interface.</pre>
+<h2>A4. SESSION ORDER</h2>
+<pre>  Start every session with:   python -m tools.discovery list-ports
+
+  S1  DMM-A alone, read-only
+        python -m tools.discovery dmm --port &lt;port&gt; --label DMM-A --operator &quot;&lt;name&gt;&quot; [--baud 9600] [--term LF]
+  S2  DMM-A alone, active (optional)       same as S1, plus --active
+  S3  DMM-B alone, read-only               same as S1 with --label DMM-B
+  S4  BOTH meters connected
+        python -m tools.discovery dmm-pair --operator &quot;&lt;name&gt;&quot;
+        (answers: can software tell the two meters apart?)
+  S5  DAQ over LAN, read-only
+        python -m tools.discovery daq --host &lt;ip&gt; --label DAQ --operator &quot;&lt;name&gt;&quot;
+  S6  DAQ active (optional) - self-test only, all field wiring disconnected
+        same as S5, plus --active
+  S7  DAQ over USB-CDC, read-only (optional)
+        python -m tools.discovery daq --serial-port &lt;port&gt; --label DAQ --operator &quot;&lt;name&gt;&quot;
+
+  &quot;Active&quot; sessions ask the operator to type INPUTS DISCONNECTED before running.</pre>
+<h2>C. WHAT TO SEND BACK AFTER EACH SESSION</h2>
+<pre>  - The whole session folder discovery_runs/&lt;timestamp&gt;_&lt;label&gt;/:
+      report.md, report.json, transcript.log, profile_fragment.yaml
+  - Photos: front, rear, nameplate; DAQ module labels
+  - The handwritten panel readings (A2 steps 4-7; A3 steps 4 and 6)
+  - Anything unexpected: ERR lit, relay closed as found, dropped
+    connections, timeouts
+
+  Do not hand-edit the project&#x27;s instrument_profiles.yaml. Profile fragments
+  are reviewed and merged in one pass after all sessions.
+
+  After S1-S5 there is enough to fill in the transport sections of the
+  instrument profiles and start the GUI.
+
+No hardware command is approved for execution by this document. The tool is
+read-only by design; the optional active sessions only change settings they
+restore.</pre>
+<footer>Vehicle Harness Functional Tester &middot; updated 2026-09-24 &middot;
+Source: github.com/Jaramillo35/TestLab, AgentKnowledgeBase/copilot_agent_pack/knowledge.
+Commands shown here are transcribed from manufacturer manuals and are NOT approved for
+hardware execution. The discovery tool may send only the allowlisted strings in the
+specification.</footer>
+</body>
+</html>

@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Discovery tool knowledge - Vehicle Harness Functional Tester</title>
+<meta name="description" content="Specification, operator guide, command reference and manuals for a read-only discovery tool for the B&amp;K 2831E multimeter and DAQ3120.">
+<style>
+body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;max-width:60rem;
+margin:0 auto;padding:1.5rem;line-height:1.5;color:#1b1b1b;background:#fff}
+h1{font-size:1.6rem;margin:.2rem 0 .8rem}
+h2{font-size:1.2rem;margin:2rem 0 .4rem;padding-top:.6rem;border-top:1px solid #ddd}
+h3{font-size:1.05rem;margin:1.4rem 0 .3rem}
+pre{white-space:pre-wrap;word-wrap:break-word;background:#f6f7f8;padding:.8rem 1rem;
+border-radius:6px;font-size:.9rem;line-height:1.4;margin:.4rem 0}
+table{border-collapse:collapse;font-size:.9rem;margin:.6rem 0;display:block;overflow-x:auto}
+th,td{border:1px solid #ccc;padding:.3rem .5rem;vertical-align:top;text-align:left}
+code{font-size:.9em}
+.note{background:#fff8e1;border-left:4px solid #e0a800;padding:.6rem .9rem;margin:1rem 0}
+nav{font-size:.9rem;margin-bottom:1rem}
+footer{margin-top:3rem;font-size:.85rem;color:#555;border-top:1px solid #ddd;padding-top:.8rem}
+</style>
+</head>
+<body>
+<nav><a href="./">Vehicle Harness Functional Tester - discovery tool knowledge</a></nav>
+<h1>Vehicle Harness Functional Tester - discovery tool knowledge</h1>
+<p>Knowledge for building and running a read-only Python discovery tool for two
+bench instruments: the <strong>B&amp;K Precision 2831E</strong> multimeter and the
+<strong>B&amp;K Precision DAQ3120</strong> data acquisition system. The tool connects
+to one instrument at a time, asks read-only questions, and records the answers
+needed to build the test application's GUI and drivers.</p>
+<div class=note><strong>Start with the specification.</strong> It is the authoritative
+document and wins over every other page. The tool may send only the exact command
+strings in its allowlists. The oscilloscope and power supply are out of scope and are
+deliberately not covered here.</div>
+<h2>Pages</h2>
+<ul>
+<li><a href="spec.html">Discovery tool specification</a> - Self-contained specification for the read-only discovery tool: rules, command allowlists for the B&amp;K 2831E and DAQ3120, output, tests, delivery format.</li>
+<li><a href="operator.html">Operator setup and discovery sessions</a> - Bench preparation for the B&amp;K 2831E multimeters and DAQ3120, front-panel settings, session plan S1-S7 and stop conditions.</li>
+<li><a href="commands.html">Command reference - B&amp;K 2831E and DAQ3120</a> - Manufacturer-manual-cited SCPI command reference for the B&amp;K 2831E and DAQ3120 only, with page citations and known documentation gaps.</li>
+<li><a href="context.html">Project context</a> - Why the discovery tool exists, decisions already made, open questions it answers, and the safety principles of the project.</li>
+<li><a href="profiles.html">Instrument profiles - B&amp;K 2831E and DAQ3120</a> - Capabilities, transports, USB identifiers, DAQ3120 module catalogue and digital I/O pinout, in YAML form.</li>
+</ul>
+<h2>Manufacturer manuals (PDF)</h2>
+<ul>
+<li><a href="bk-2831e-manual.pdf">B&amp;K 2831E user and programming manual (71 pages)</a></li>
+<li><a href="daq3120-programming-manual.pdf">B&amp;K DAQ3120 programming manual (139 pages)</a></li>
+</ul>
+
+<footer>Vehicle Harness Functional Tester &middot; updated 2026-09-24 &middot;
+Source: github.com/Jaramillo35/TestLab, AgentKnowledgeBase/copilot_agent_pack/knowledge.
+Commands shown here are transcribed from manufacturer manuals and are NOT approved for
+hardware execution. The discovery tool may send only the allowlisted strings in the
+specification.</footer>
+</body>
+</html>

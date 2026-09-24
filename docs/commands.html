@@ -1,0 +1,1389 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Command reference - B&amp;K 2831E and DAQ3120 - Vehicle Harness Functional Tester</title>
+<meta name="description" content="Manufacturer-manual-cited SCPI command reference for the B&amp;K 2831E and DAQ3120 only, with page citations and known documentation gaps.">
+<style>
+body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;max-width:60rem;
+margin:0 auto;padding:1.5rem;line-height:1.5;color:#1b1b1b;background:#fff}
+h1{font-size:1.6rem;margin:.2rem 0 .8rem}
+h2{font-size:1.2rem;margin:2rem 0 .4rem;padding-top:.6rem;border-top:1px solid #ddd}
+h3{font-size:1.05rem;margin:1.4rem 0 .3rem}
+pre{white-space:pre-wrap;word-wrap:break-word;background:#f6f7f8;padding:.8rem 1rem;
+border-radius:6px;font-size:.9rem;line-height:1.4;margin:.4rem 0}
+table{border-collapse:collapse;font-size:.9rem;margin:.6rem 0;display:block;overflow-x:auto}
+th,td{border:1px solid #ccc;padding:.3rem .5rem;vertical-align:top;text-align:left}
+code{font-size:.9em}
+.note{background:#fff8e1;border-left:4px solid #e0a800;padding:.6rem .9rem;margin:1rem 0}
+nav{font-size:.9rem;margin-bottom:1rem}
+footer{margin-top:3rem;font-size:.85rem;color:#555;border-top:1px solid #ddd;padding-top:.8rem}
+</style>
+</head>
+<body>
+<nav><a href="./">Vehicle Harness Functional Tester - discovery tool knowledge</a></nav>
+<h1>Command reference - B&amp;K 2831E and DAQ3120</h1><div class=note><pre>COMMAND REFERENCE - B&amp;K 2831E and B&amp;K DAQ3120 ONLY
+Extract of the project&#x27;s command_register.md, sections 0-3.
+The oscilloscope and power-supply sections are DELIBERATELY EXCLUDED: those
+instruments are out of scope for the discovery tool and must never be commanded by it.
+Every command here is TRANSCRIBED from the manufacturer manual, not APPROVED.
+For the discovery tool, only the allowlists in 01_DISCOVERY_TOOL_SPEC.txt may be sent.</pre></div><h1>Command Register</h1>
+<p><strong>Project:</strong> Vehicle Harness Functional Tester
+<strong>Document status:</strong> Draft — <strong>NOT reviewed, NOT approved for hardware execution</strong>
+<strong>Created by:</strong> P0 documentation extraction from manufacturer manuals held in this repository
+<strong>Governing rule:</strong> <code>m365_copilot_agent_setup_for_harness_tester (1).md</code> §3 — <em>"Never invent, autocomplete, infer, or translate an SCPI, VISA, serial, socket, relay-switching, or power-output command. Accept a hardware command only when the user provides an exact excerpt from the programming manual for the exact model/firmware and the reviewed command register identifies the document, revision, page/section, syntax, response, units, prerequisites, and reviewer."</em></p>
+<hr />
+<h2>0. How to read this register</h2>
+<p>Every row carries a <strong>Review status</strong>. Only <code>APPROVED</code> entries may ever be transmitted to real hardware, and only after Real mode is enabled by the responsible engineer.</p>
+<table>
+<thead>
+<tr>
+<th>Status</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>TRANSCRIBED</code></td>
+<td>Syntax copied verbatim from a manufacturer manual in this repo <strong>for the exact model</strong>, with page citation. Not yet reviewed. Not yet bench-verified. Simulation use only.</td>
+</tr>
+<tr>
+<td><code>TRANSCRIBED-PROVISIONAL</code></td>
+<td>Syntax from a manufacturer manual for a <strong>related but different series</strong>. Usable to design and unit-test a <em>simulated</em> driver only. <strong>Never in Real mode.</strong> Every entry must be re-verified against the correct-model manual, and no constant from it may be hard-coded.</td>
+</tr>
+<tr>
+<td><code>BLOCKED</code></td>
+<td>No manufacturer programming manual is available for this instrument. <strong>No command may be written, guessed, or adapted from a sibling model.</strong></td>
+</tr>
+<tr>
+<td><code>APPROVED</code></td>
+<td>Reviewed by a named engineer against the manual for the exact model <em>and firmware</em>, and bench-verified. <strong>Currently: none.</strong></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Firmware caveat.</strong> Every <code>TRANSCRIBED</code> entry below is transcribed from a manual whose own example <code>*IDN?</code> response is <code>2831E Multimeter,Ver1.0.09.12.03</code>. If the installed unit reports a different firmware version, <strong>every entry reverts to unverified</strong> until re-checked against the matching manual revision.</p>
+<p><strong>Current count: 0 APPROVED. 1 of 4 instruments fully BLOCKED (ITECH). 1 provisional (Tektronix).</strong></p>
+<hr />
+<h2>1. Instrument transport summary</h2>
+<table>
+<thead>
+<tr>
+<th>Instrument</th>
+<th>Manual in repo?</th>
+<th>Transport</th>
+<th>Register status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>B&amp;K 2831E DMM ×2</td>
+<td><strong>Yes</strong> — <code>bk_precision_2831e_manual.pdf</code></td>
+<td>USB Virtual COM (serial, CP210x), 8N1, 9600 default, <code>&lt;LF&gt;</code> or <code>&lt;CR&gt;</code></td>
+<td><code>TRANSCRIBED</code></td>
+</tr>
+<tr>
+<td>B&amp;K DAQ3120</td>
+<td><strong>Yes</strong> — <code>manuals/DAQ3120_programming_manual.pdf</code></td>
+<td>LAN / USBTMC / USBVCP / micro-GPIB</td>
+<td><code>TRANSCRIBED</code></td>
+</tr>
+<tr>
+<td>Tektronix TBS2104B</td>
+<td><strong>Wrong series</strong> — <code>manuals/TBS2000-Programmer-077114902.pdf</code> is TBS2000, not TBS2000<strong>B</strong></td>
+<td>LAN / USBTMC</td>
+<td><code>TRANSCRIBED-PROVISIONAL</code></td>
+</tr>
+<tr>
+<td>ITECH IT-M3906B-32-240</td>
+<td><strong>No programming guide.</strong> User manual present (<code>manuals/IT-M3900B-User-Manual.pdf</code>) — hardware interfaces only</td>
+<td>LAN / USB / CAN / P-IO</td>
+<td><code>BLOCKED</code></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>2. B&amp;K Precision 2831E — TRANSCRIBED</h2>
+<p><strong>Source document:</strong> <code>bk_precision_2831e_manual.pdf</code> (SRC-02), Chapters 5–6.
+<strong>Model scope:</strong> 2831E. The same manual also documents model 5491B — <strong>5491B ranges and accuracies differ and must not be used for the 2831E.</strong>
+<strong>Reviewer:</strong> <em>(none — unreviewed)</em>
+<strong>Bench verification:</strong> <em>(none)</em></p>
+<h3>2.1 Transport parameters</h3>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>Value</th>
+<th>Manual page</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Interface</td>
+<td>USB Virtual COM (behaves as RS-232 serial port)</td>
+<td>p.40 §5.2.1; p.71</td>
+</tr>
+<tr>
+<td>Data bits / stop bits / parity</td>
+<td>8 / 1 / none</td>
+<td>p.40 §5.2.2</td>
+</tr>
+<tr>
+<td>Baud rate</td>
+<td>600 / 1200 / 2400 / 4800 / 9600 / 19200 / 38400</td>
+<td>p.40 §5.2.3</td>
+</tr>
+<tr>
+<td>Baud default</td>
+<td>9600</td>
+<td>p.41</td>
+</tr>
+<tr>
+<td>Termination character</td>
+<td><code>&lt;LF&gt;</code> (ASCII 10) or <code>&lt;CR&gt;</code>, selectable on the instrument</td>
+<td>p.40 §5.2.2; p.38–39 §4.5.3</td>
+</tr>
+<tr>
+<td>Reading data format</td>
+<td><code>SD.DDDDDDESDDD&lt;NL&gt;</code></td>
+<td>p.41 §5.3</td>
+</tr>
+<tr>
+<td>Echo handshake</td>
+<td><strong>Every transmitted character is echoed; wait for it before sending the next</strong></td>
+<td>p.41 §5.2.4 item 3</td>
+</tr>
+<tr>
+<td>Queries per line</td>
+<td><strong>One</strong> query per command line recommended; two queries require two reads</td>
+<td>p.41 §5.2.4 item 5</td>
+</tr>
+<tr>
+<td>USB bridge chip</td>
+<td><strong>Silicon Labs CP210x USB-to-UART Bridge</strong></td>
+<td>B&amp;K <code>Bench_Multimeter_USB_Drivers.zip</code> → <code>slabvcp.inf</code> (SRC-09)</td>
+</tr>
+<tr>
+<td>USB VID / PID</td>
+<td><strong><code>0x10C4</code> / <code>0xEA60</code></strong> (dual-port variants use <code>0xEA70</code> + <code>Mi_00</code>/<code>Mi_01</code>)</td>
+<td>SRC-09 <code>slabvcp.inf</code></td>
+</tr>
+<tr>
+<td>Bundled driver version</td>
+<td>6.6.0.0, dated 2012-10-05 — <strong>predates Windows 10/11; obtain a current CP210x VCP driver</strong></td>
+<td>SRC-09 <code>ReleaseNotes.txt</code></td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Port mapping (closes the OBS-007 action).</strong> Enumerate by <code>VID_10C4</code> + <code>PID_EA60</code> + <strong>serial number</strong>, never by COM-port order — <code>pyserial</code>'s <code>comports()</code> exposes <code>vid</code>, <code>pid</code> and <code>serial_number</code>. <strong>Caveat R-DMM-02:</strong> CP210x devices are often shipped with identical factory serial strings. Test with both meters connected before relying on serial-based identification; if the serials collide, fall back to a documented physical-port binding and make it a commissioning checklist item.</p>
+</blockquote>
+<h3>2.2 Command syntax rules (p.42–45)</h3>
+<ul>
+<li>Case-insensitive: <code>FUNC:VOLT:DC</code> = <code>func:volt:dc</code>.</li>
+<li>Short form: drop the 4th letter and everything after it if the 4th letter is a vowel (<code>:immediate</code> → <code>:imm</code>); keep it if a consonant (<code>:format</code> → <code>:form</code>); exception <code>:TCouple</code> → <code>:tc</code>.</li>
+<li>Brackets <code>[ ]</code> mark optional keywords — do not transmit the brackets.</li>
+<li>Angle brackets <code>&lt; &gt;</code> mark parameter types — do not transmit the brackets.</li>
+<li>A space separates command and parameter. No space before or after a colon.</li>
+<li><code>;</code> separates commands at the same level; <code>;:</code> restarts from the root.</li>
+<li>Parameter types: <code>&lt;b&gt;</code> boolean (<code>0</code>/<code>OFF</code>/<code>1</code>/<code>ON</code>), <code>&lt;n&gt;</code> numeric or <code>DEFault</code>/<code>MINimum</code>/<code>MAXimum</code>, <code>&lt;NRf&gt;</code> number, <code>&lt;name&gt;</code> enumerated.</li>
+</ul>
+<h3>2.3 Common commands (p.62–63)</h3>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Command</th>
+<th>Type</th>
+<th>Response</th>
+<th>Description</th>
+<th>Page</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CR-2831E-001</code></td>
+<td><code>*IDN?</code></td>
+<td>Query</td>
+<td><code>&lt;product&gt;,&lt;version&gt;&lt;LF^END&gt;</code> e.g. <code>2831E Multimeter,Ver1.0.09.12.03</code></td>
+<td>Identify instrument</td>
+<td>p.63</td>
+</tr>
+<tr>
+<td><code>CR-2831E-002</code></td>
+<td><code>*RST</code></td>
+<td>Command</td>
+<td>none</td>
+<td>Reset instrument. <strong>Takes a long time — controller must wait, do not pipeline (p.41 §5.2.4 item 7)</strong></td>
+<td>p.62–63</td>
+</tr>
+<tr>
+<td><code>CR-2831E-003</code></td>
+<td><code>*TRG</code></td>
+<td>Command</td>
+<td>none</td>
+<td>Trigger a measurement. <strong>Prerequisite: <code>TRIGger:SOURce BUS</code></strong></td>
+<td>p.63</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>The 2831E supports <strong>only</strong> these three common commands (p.45 §6.3). <code>*OPC?</code>, <code>*CLS</code>, <code>*ESR?</code>, <code>*STB?</code>, <code>*WAI</code> are <strong>not documented</strong> — treat as NOT IMPLEMENTED.</p>
+</blockquote>
+<h3>2.4 FUNCtion subsystem (p.47)</h3>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Command</th>
+<th>Response</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CR-2831E-010</code></td>
+<td><code>:FUNCtion &lt;name&gt;</code></td>
+<td>none</td>
+<td>Select measurement function</td>
+</tr>
+<tr>
+<td><code>CR-2831E-011</code></td>
+<td><code>:FUNCtion?</code></td>
+<td><code>&lt;name&gt;</code></td>
+<td>Query current function</td>
+</tr>
+</tbody>
+</table>
+<p><code>&lt;name&gt;</code> ∈ <code>VOLTage:AC</code>, <code>VOLTage:DC</code>, <code>CURRent:AC</code>, <code>CURRent:DC</code>, <code>RESistance</code>, <code>FREQuency</code>, <code>PERiod</code>, <code>DIODe</code>, <code>CONTinuity</code>.</p>
+<blockquote>
+<p>Each function retains its own range / speed / filter / rel setup (p.47). Do not assume a range set under one function applies after switching.</p>
+</blockquote>
+<h3>2.5 RESistance subsystem (p.56–59) — primary harness continuity path</h3>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Command</th>
+<th>Parameter</th>
+<th>Default</th>
+<th>Description</th>
+<th>Page</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CR-2831E-020</code></td>
+<td><code>:RESistance:NPLCycles &lt;n&gt;</code></td>
+<td>0.5–2; <code>DEFault</code>=1, <code>MINimum</code>=0.1, <code>MAXimum</code>=10</td>
+<td>1</td>
+<td>Integration period in power line cycles</td>
+<td>p.56</td>
+</tr>
+<tr>
+<td><code>CR-2831E-021</code></td>
+<td><code>:RESistance:NPLCycles?</code></td>
+<td>—</td>
+<td>—</td>
+<td>Query NPLC</td>
+<td>p.56</td>
+</tr>
+<tr>
+<td><code>CR-2831E-022</code></td>
+<td><code>:RESistance:RANGe[:UPPer] &lt;n&gt;</code></td>
+<td>0 to 20e6 (expected reading, ohms)</td>
+<td>20e6</td>
+<td>Manual range select; sending a valid value <strong>disables autorange</strong></td>
+<td>p.57</td>
+</tr>
+<tr>
+<td><code>CR-2831E-023</code></td>
+<td><code>:RESistance:RANGe[:UPPer]?</code></td>
+<td>—</td>
+<td>—</td>
+<td>Query range</td>
+<td>p.57</td>
+</tr>
+<tr>
+<td><code>CR-2831E-024</code></td>
+<td><code>:RESistance:RANGe:AUTO &lt;b&gt;</code></td>
+<td><code>ON</code>/<code>1</code>/<code>OFF</code>/<code>0</code></td>
+<td>ON</td>
+<td>Autorange</td>
+<td>p.57</td>
+</tr>
+<tr>
+<td><code>CR-2831E-025</code></td>
+<td><code>:RESistance:RANGe:AUTO?</code></td>
+<td>—</td>
+<td>—</td>
+<td>Query autorange</td>
+<td>p.57</td>
+</tr>
+<tr>
+<td><code>CR-2831E-026</code></td>
+<td><code>:RESistance:REFerence &lt;n&gt;</code></td>
+<td>0 to 20e6</td>
+<td>0</td>
+<td>Set REL reference. Reading = input − reference</td>
+<td>p.58</td>
+</tr>
+<tr>
+<td><code>CR-2831E-027</code></td>
+<td><code>:RESistance:REFerence?</code></td>
+<td>—</td>
+<td>—</td>
+<td>Query reference. <strong>Errors if no reference was ever set</strong></td>
+<td>p.58</td>
+</tr>
+<tr>
+<td><code>CR-2831E-028</code></td>
+<td><code>:RESistance:REFerence:STATe &lt;b&gt;</code></td>
+<td><code>ON</code>/<code>OFF</code></td>
+<td>OFF</td>
+<td>Enable/disable REL</td>
+<td>p.58</td>
+</tr>
+<tr>
+<td><code>CR-2831E-029</code></td>
+<td><code>:RESistance:REFerence:STATe?</code></td>
+<td>—</td>
+<td>—</td>
+<td>Query REL state</td>
+<td>p.58</td>
+</tr>
+<tr>
+<td><code>CR-2831E-030</code></td>
+<td><code>:RESistance:REFerence:ACQuire</code></td>
+<td>—</td>
+<td>—</td>
+<td>Acquire present input as reference (lead-resistance null)</td>
+<td>p.58–59</td>
+</tr>
+</tbody>
+</table>
+<p><strong><code>:ACQuire</code> prerequisites and error conditions (p.59) — enforce all three in the driver:</strong>
+1. The instrument must already be on the resistance function; sending it in another function <strong>causes an error</strong>.
+2. The last reading must not have been an <strong>overflow</strong>.
+3. A reading must have been <strong>triggered</strong>; if none has, an error occurs.</p>
+<p><strong>Accuracy prerequisite:</strong> the 200 Ω, 2 kΩ and 20 kΩ range accuracies are specified <strong>only under REL</strong> (p.67 footnote 2). A continuity/resistance recipe that skips the null is out of specification.</p>
+<h3>2.6 VOLTage subsystem (p.48–51)</h3>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Command</th>
+<th>Parameter</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CR-2831E-040</code></td>
+<td><code>:VOLTage:DC:NPLCycles &lt;n&gt;</code> / <code>?</code></td>
+<td>0.5–2; <code>DEF</code>=1, <code>MIN</code>=0.5, <code>MAX</code>=2</td>
+<td>1</td>
+</tr>
+<tr>
+<td><code>CR-2831E-041</code></td>
+<td><code>:VOLTage:DC:RANGe[:UPPer] &lt;n&gt;</code> / <code>?</code></td>
+<td>0 to 1010</td>
+<td>1000</td>
+</tr>
+<tr>
+<td><code>CR-2831E-042</code></td>
+<td><code>:VOLTage:DC:RANGe:AUTO &lt;b&gt;</code> / <code>?</code></td>
+<td><code>ON</code>/<code>OFF</code></td>
+<td>ON</td>
+</tr>
+<tr>
+<td><code>CR-2831E-043</code></td>
+<td><code>:VOLTage:DC:REFerence &lt;n&gt;</code> / <code>?</code></td>
+<td>−1010 to 1010</td>
+<td>0</td>
+</tr>
+<tr>
+<td><code>CR-2831E-044</code></td>
+<td><code>:VOLTage:DC:REFerence:STATe &lt;b&gt;</code> / <code>?</code></td>
+<td><code>ON</code>/<code>OFF</code></td>
+<td>OFF</td>
+</tr>
+<tr>
+<td><code>CR-2831E-045</code></td>
+<td><code>:VOLTage:DC:REFerence:ACQuire</code></td>
+<td>—</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>CR-2831E-046</code></td>
+<td><code>:VOLTage:AC:NPLCycles &lt;n&gt;</code> / <code>?</code></td>
+<td>0.5–2</td>
+<td>1</td>
+</tr>
+<tr>
+<td><code>CR-2831E-047</code></td>
+<td><code>:VOLTage:AC:RANGe[:UPPer] &lt;n&gt;</code> / <code>?</code></td>
+<td>0 to 757.5</td>
+<td>757.5</td>
+</tr>
+<tr>
+<td><code>CR-2831E-048</code></td>
+<td><code>:VOLTage:AC:RANGe:AUTO &lt;b&gt;</code> / <code>?</code></td>
+<td><code>ON</code>/<code>OFF</code></td>
+<td>ON</td>
+</tr>
+<tr>
+<td><code>CR-2831E-049</code></td>
+<td><code>:VOLTage:AC:REFerence &lt;n&gt;</code> / <code>?</code></td>
+<td>−757.5 to 757.5</td>
+<td>0</td>
+</tr>
+<tr>
+<td><code>CR-2831E-050</code></td>
+<td><code>:VOLTage:AC:REFerence:STATe &lt;b&gt;</code> / <code>?</code></td>
+<td><code>ON</code>/<code>OFF</code></td>
+<td>OFF</td>
+</tr>
+<tr>
+<td><code>CR-2831E-051</code></td>
+<td><code>:VOLTage:AC:REFerence:ACQuire</code></td>
+<td>—</td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<p>Range is specified as the <strong>expected reading</strong>, not the range name: to select the 200 mV range, send <code>0.02</code> (p.49).</p>
+<h3>2.7 CURRent subsystem (p.52–55)</h3>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Command</th>
+<th>Parameter</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CR-2831E-060</code></td>
+<td><code>:CURRent:DC:NPLCycles &lt;n&gt;</code> / <code>?</code></td>
+<td>0.1–10; <code>DEF</code>=1, <code>MIN</code>=0.5, <code>MAX</code>=2 <em>(as printed p.53)</em></td>
+<td>1</td>
+</tr>
+<tr>
+<td><code>CR-2831E-061</code></td>
+<td><code>:CURRent:DC:RANGe[:UPPer] &lt;n&gt;</code> / <code>?</code></td>
+<td>−20 to 20</td>
+<td>20</td>
+</tr>
+<tr>
+<td><code>CR-2831E-062</code></td>
+<td><code>:CURRent:DC:RANGe:AUTO &lt;b&gt;</code> / <code>?</code></td>
+<td><code>ON</code>/<code>OFF</code></td>
+<td>ON</td>
+</tr>
+<tr>
+<td><code>CR-2831E-063</code></td>
+<td><code>:CURRent:DC:REFerence &lt;n&gt;</code> / <code>?</code></td>
+<td>0 to 20 <em>(as printed)</em></td>
+<td>0</td>
+</tr>
+<tr>
+<td><code>CR-2831E-064</code></td>
+<td><code>:CURRent:DC:REFerence:STATe &lt;b&gt;</code> / <code>?</code></td>
+<td><code>ON</code>/<code>OFF</code></td>
+<td>OFF</td>
+</tr>
+<tr>
+<td><code>CR-2831E-065</code></td>
+<td><code>:CURRent:DC:REFerence:ACQuire</code></td>
+<td>—</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>CR-2831E-066</code></td>
+<td><code>:CURRent:AC:NPLCycles &lt;n&gt;</code> / <code>?</code></td>
+<td>0.1–10</td>
+<td>1</td>
+</tr>
+<tr>
+<td><code>CR-2831E-067</code></td>
+<td><code>:CURRent:AC:RANGe[:UPPer] &lt;n&gt;</code> / <code>?</code></td>
+<td>0 to 20</td>
+<td>20</td>
+</tr>
+<tr>
+<td><code>CR-2831E-068</code></td>
+<td><code>:CURRent:AC:RANGe:AUTO &lt;b&gt;</code> / <code>?</code></td>
+<td><code>ON</code>/<code>OFF</code></td>
+<td>ON</td>
+</tr>
+<tr>
+<td><code>CR-2831E-069</code></td>
+<td><code>:CURRent:AC:REFerence &lt;n&gt;</code> / <code>?</code></td>
+<td>−20 to 20 <em>(as printed)</em></td>
+<td>0</td>
+</tr>
+<tr>
+<td><code>CR-2831E-070</code></td>
+<td><code>:CURRent:AC:REFerence:STATe &lt;b&gt;</code> / <code>?</code></td>
+<td><code>ON</code>/<code>OFF</code></td>
+<td>OFF</td>
+</tr>
+<tr>
+<td><code>CR-2831E-071</code></td>
+<td><code>:CURRent:AC:REFerence:ACQuire</code></td>
+<td>—</td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Manual inconsistencies to raise with the reviewer, not to silently "fix":</strong>
+(a) p.53 gives the NPLC parameter range as <code>0.1 to 10</code> but <code>MINimum</code> = 0.5 and <code>MAXimum</code> = 2, which contradicts it.
+(b) p.52 table gives DC reference as −20 to 20 and AC as 0 to 20; p.54 body text gives AC as −20 to 20 and DC as 0 to 20 — the two are swapped.
+Encode the <strong>narrower</strong> of the two readings and flag both to the reviewer.</p>
+</blockquote>
+<h3>2.8 FREQuency / PERiod subsystem (p.59–61)</h3>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Command</th>
+<th>Parameter</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CR-2831E-080</code></td>
+<td><code>:FREQuency:THReshold:VOLTage:RANGe &lt;n&gt;</code> / <code>?</code></td>
+<td>0 to 1010 <em>(p.60)</em> / 0 to 750 <em>(p.59 table)</em></td>
+<td>20</td>
+</tr>
+<tr>
+<td><code>CR-2831E-081</code></td>
+<td><code>:FREQuency:REFerence &lt;n&gt;</code> / <code>?</code></td>
+<td>0 to 1.0e6</td>
+<td>0</td>
+</tr>
+<tr>
+<td><code>CR-2831E-082</code></td>
+<td><code>:FREQuency:REFerence:STATe &lt;b&gt;</code> / <code>?</code></td>
+<td><code>ON</code>/<code>OFF</code></td>
+<td>OFF</td>
+</tr>
+<tr>
+<td><code>CR-2831E-083</code></td>
+<td><code>:FREQuency:REFerence:ACQuire</code></td>
+<td>—</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>CR-2831E-084</code></td>
+<td><code>:PERiod:THReshold:VOLTage:RANGe &lt;n&gt;</code> / <code>?</code></td>
+<td>0 to 1010 / 0 to 750</td>
+<td>20</td>
+</tr>
+<tr>
+<td><code>CR-2831E-085</code></td>
+<td><code>:PERiod:REFerence &lt;n&gt;</code> / <code>?</code></td>
+<td>0 to 1</td>
+<td>0</td>
+</tr>
+<tr>
+<td><code>CR-2831E-086</code></td>
+<td><code>:PERiod:REFerence:STATe &lt;b&gt;</code> / <code>?</code></td>
+<td><code>ON</code>/<code>OFF</code></td>
+<td>OFF</td>
+</tr>
+<tr>
+<td><code>CR-2831E-087</code></td>
+<td><code>:PERiod:REFerence:ACQuire</code></td>
+<td>—</td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<p><em>(Threshold range printed inconsistently between p.59 and p.60 — flag to reviewer.)</em></p>
+<h3>2.9 TRIGger subsystem (p.61–62)</h3>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Command</th>
+<th>Parameter</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CR-2831E-090</code></td>
+<td><code>TRIGger:SOURce &lt;name&gt;</code></td>
+<td><code>IMMediate</code> | <code>BUS</code> | <code>MANual</code> (a.k.a. <code>EXTernal</code>)</td>
+<td><code>IMMediate</code></td>
+</tr>
+<tr>
+<td><code>CR-2831E-091</code></td>
+<td><code>TRIGger:SOURce?</code></td>
+<td>—</td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<p><code>IMMediate</code> = internal/continuous. <code>BUS</code> = triggered via USB/RS-232 by <code>*TRG</code>. <code>MANual</code> = front-panel Trig key.</p>
+<h3>2.10 FETCh subsystem (p.62)</h3>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Command</th>
+<th>Response</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CR-2831E-100</code></td>
+<td><code>:FETCh?</code></td>
+<td>Reading in <code>SD.DDDDDDESDDD&lt;NL&gt;</code> format</td>
+<td><strong>Returns the last available reading. Does NOT trigger a measurement and does NOT change configuration. Returns the same value repeatedly until a new reading occurs.</strong></td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Staleness hazard — must be handled in the driver.</strong> Because <code>:FETCh?</code> returns the <em>same</em> value until a new reading exists, a poll loop can silently return a stale reading and the test would pass on old data. The driver must use the documented deterministic sequence (§2.12) and must never treat a repeated identical value as a fresh measurement.</p>
+</blockquote>
+<h3>2.11 DISPlay subsystem (p.46)</h3>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Command</th>
+<th>Parameter</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CR-2831E-110</code></td>
+<td><code>:DISPlay:ENABle &lt;b&gt;</code></td>
+<td><code>ON</code>/<code>OFF</code></td>
+<td>Disable the front-panel display to run faster. <strong>While disabled the display is frozen and all front-panel controls except LOCAL are disabled</strong></td>
+</tr>
+<tr>
+<td><code>CR-2831E-111</code></td>
+<td><code>:DISPlay:ENABle?</code></td>
+<td>—</td>
+<td>Query display state</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Do not use <code>:DISPlay:ENABle OFF</code> in production recipes.</strong> Freezing the display and locking the front panel removes the operator's ability to see what the instrument is doing during an energized test. The speed gain is not worth it. If it is ever used, the application must guarantee re-enable on every exit path including exception, abort and timeout.</p>
+</blockquote>
+<h3>2.12 Only documented deterministic read sequence</h3>
+<pre><code>TRIGger:SOURce BUS      # CR-2831E-090
+:FUNCtion RESistance    # CR-2831E-010
+:RESistance:RANGe:AUTO ON   # or an explicit range, CR-2831E-024 / -022
+*TRG                    # CR-2831E-003  — trigger one measurement
+:FETCh?                 # CR-2831E-100  — read it back
+</code></pre>
+<p>Each line is transmitted with the configured terminator, respecting the per-character echo handshake and one-query-per-line rule of §2.1.</p>
+<h3>2.13 BLOCKED items within the 2831E</h3>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Item</th>
+<th>Why blocked</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CR-2831E-BLOCKED-01</code></td>
+<td><code>:READ?</code> and <code>:MEASure?</code></td>
+<td>Referenced once on p.62 as commands that auto-assert <code>:FETCh?</code>, but <strong>defined nowhere in the manual</strong> — no syntax, no subsystem entry, no response format. <strong>Do not guess.</strong> Use §2.12 instead.</td>
+</tr>
+<tr>
+<td><code>CR-2831E-BLOCKED-02</code></td>
+<td><code>HOLD</code> subsystem</td>
+<td>Listed as an available subsystem on p.45 and referenced syntactically on p.42–43 (<code>:HOLD:STATe &lt;b&gt;</code>), but <strong>has no §6.3 reference section</strong> in this manual revision. Parameters, defaults and behaviour undocumented.</td>
+</tr>
+<tr>
+<td><code>CR-2831E-BLOCKED-03</code></td>
+<td>Limit / compare (HI-IN-LO) remote control</td>
+<td>Limit mode is a headline datasheet feature (SRC-01 p.2) and is settable from the front panel (<code>MATH MEU → HI LIMIT / LO LIMIT</code>), but <strong>no SCPI subsystem for it appears in Chapter 6.</strong> Pass/fail limits must be evaluated <strong>in the application</strong>, from raw readings — not delegated to the meter.</td>
+</tr>
+<tr>
+<td><code>CR-2831E-BLOCKED-04</code></td>
+<td>Error / status queue readout</td>
+<td>No <code>*ESR?</code>, <code>*STB?</code>, <code>SYSTem:ERRor?</code> documented. The <code>ERR</code> front-panel annunciator (p.~17) is <strong>not machine-readable</strong>. The driver cannot query instrument error state; it must rely on response parsing and timeouts.</td>
+</tr>
+<tr>
+<td><code>CR-2831E-BLOCKED-05</code></td>
+<td>Chapter 8 programming examples</td>
+<td>Referenced on p.41 (<em>"Please refer to Chapter 8 for serial interface programming examples"</em>) but <strong>the manual ends at Chapter 7 / p.71.</strong> No examples exist in this document.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>3. B&amp;K Precision DAQ3120 — TRANSCRIBED</h2>
+<p><strong>Source document:</strong> <code>manuals/DAQ3120_programming_manual.pdf</code> (SRC-07), <em>DAQ3120 Series Programming Manual</em>, version stamp <strong>January 7, 2026</strong>, 139 pp. SHA-256 (first 16) <code>563c57bf11cae55a</code>. Retrieved from B&amp;K Precision's media bucket — see <code>P0-DOC-03_internet_research_findings.md</code> §2.
+<strong>Model scope:</strong> DAQ3120 Series.
+<strong>Reviewer:</strong> <em>(none — unreviewed)</em>
+<strong>Bench verification:</strong> <em>(none)</em>
+<strong>Firmware caveat:</strong> unverified against the installed unit. <code>*IDN?</code> returns the firmware version — record it and re-check this register against the matching manual revision.</p>
+<blockquote>
+<p><strong>Switching commands are the highest-risk commands in this project.</strong> A wrong route can connect a resistance measurement path to an energized circuit, or short two harness pins together. Nothing in §3.6 may be emitted until the fixture schematic, the channel map and the forbidden-combination table exist and have been reviewed (<code>P0-DOC-01</code> OBS-009, T-04).</p>
+</blockquote>
+<h3>3.1 Syntax and data types (SRC-07 ch. 2–3)</h3>
+<ul>
+<li>Standard SCPI: long/short forms, case-insensitive, responses return short form uppercase.</li>
+<li><code>&lt;NRf&gt;</code> accepts <code>&lt;NR1&gt;</code> integer, <code>&lt;NR2&gt;</code> decimal, <code>&lt;NR3&gt;</code> exponent.</li>
+<li><code>&lt;Boolean&gt;</code>: <code>ON</code>/<code>1</code>, <code>OFF</code>/<code>0</code>.</li>
+<li><code>&lt;String&gt;</code>: double-quoted; the quotes are part of the syntax.</li>
+<li>Special keywords: <code>MIN</code>, <code>MAX</code>, <code>DEF</code>, <code>AUTO</code>.</li>
+</ul>
+<p><strong>Channel list <code>(@&lt;ch_list&gt;)</code> — SRC-07 §3.3, p.18:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Form</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Single</td>
+<td><code>(@101)</code></td>
+</tr>
+<tr>
+<td>Multiple</td>
+<td><code>(@101,102,105)</code></td>
+</tr>
+<tr>
+<td>Range</td>
+<td><code>(@101:105)</code></td>
+</tr>
+<tr>
+<td>Combined</td>
+<td><code>(@101:105,201)</code></td>
+</tr>
+</tbody>
+</table>
+<p>Channel numbers are <code>&lt;slot&gt;&lt;channel&gt;</code>: slot 1 → <code>1xx</code>, slot 2 → <code>2xx</code>, slot 3 → <code>3xx</code>. Computed "Computer Channels" are <strong>401–420</strong> (DAQ3120 user manual §5.6.1).</p>
+<h3>3.2 Common commands (SRC-07 ch. 5, pp.22–26)</h3>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Command</th>
+<th>Response</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CR-DAQ-001</code></td>
+<td><code>*IDN?</code></td>
+<td><code>B&amp;K Precision, DAQ3120, &lt;Serial Number&gt;, &lt;Firmware Version&gt;</code></td>
+<td><strong>Serial and firmware are machine-readable</strong> — automate the identity check</td>
+</tr>
+<tr>
+<td><code>CR-DAQ-002</code></td>
+<td><code>*RST</code></td>
+<td>—</td>
+<td>Factory default. <strong>Aborts any scan and clears the scan list</strong></td>
+</tr>
+<tr>
+<td><code>CR-DAQ-003</code></td>
+<td><code>*CLS</code></td>
+<td>—</td>
+<td>Clear status</td>
+</tr>
+<tr>
+<td><code>CR-DAQ-004</code></td>
+<td><code>*ESE</code> / <code>*ESR?</code></td>
+<td>— / <code>&lt;NR1&gt;</code></td>
+<td>Standard event status enable / read</td>
+</tr>
+<tr>
+<td><code>CR-DAQ-005</code></td>
+<td><code>*OPC</code> / <code>*OPC?</code></td>
+<td>— / <code>&lt;NR1&gt;</code></td>
+<td>Operation complete</td>
+</tr>
+<tr>
+<td><code>CR-DAQ-006</code></td>
+<td><code>*SRE</code> / <code>*STB?</code></td>
+<td>— / <code>&lt;NR1&gt;</code></td>
+<td>Service request enable / status byte</td>
+</tr>
+<tr>
+<td><code>CR-DAQ-007</code></td>
+<td><code>*TRG</code></td>
+<td>—</td>
+<td>Software trigger. <strong>Prerequisite: <code>TRIGger:SOURce BUS</code></strong></td>
+</tr>
+<tr>
+<td><code>CR-DAQ-008</code></td>
+<td><code>*TST?</code></td>
+<td><code>0</code> = pass, non-zero = fail</td>
+<td>Complete self-test</td>
+</tr>
+<tr>
+<td><code>CR-DAQ-009</code></td>
+<td><code>*WAI</code></td>
+<td>—</td>
+<td>Wait for pending operations</td>
+</tr>
+<tr>
+<td><code>CR-DAQ-010</code></td>
+<td><code>*SAV</code> / <code>*RCL</code></td>
+<td>—</td>
+<td>Save / recall instrument state</td>
+</tr>
+<tr>
+<td><code>CR-DAQ-011</code></td>
+<td><code>*PSC</code></td>
+<td>—</td>
+<td>Power-on status clear</td>
+</tr>
+</tbody>
+</table>
+<h3>3.3 Acquisition control (SRC-07 ch. 6, pp.28–30)</h3>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Command</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CR-DAQ-020</code></td>
+<td><code>ABORt</code></td>
+<td>Aborts a scan in progress, returns to trigger idle. <strong>Starting a new scan after an abort clears reading memory</strong></td>
+</tr>
+<tr>
+<td><code>CR-DAQ-021</code></td>
+<td><code>INITiate[:IMMediate]</code></td>
+<td>Idle → wait-for-trigger. <strong>Clears the previous set of measurements from reading memory</strong></td>
+</tr>
+<tr>
+<td><code>CR-DAQ-022</code></td>
+<td><code>FETCh?</code></td>
+<td>Waits for completion, copies all available measurements to the output buffer. <strong>Does not erase readings</strong> — the same data can be retrieved repeatedly</td>
+</tr>
+<tr>
+<td><code>CR-DAQ-023</code></td>
+<td><code>READ?</code></td>
+<td>Starts a new scan and waits for completion. <strong>Equivalent to <code>ABORt</code> + <code>INITiate</code> + <code>FETCh?</code></strong></td>
+</tr>
+<tr>
+<td><code>CR-DAQ-024</code></td>
+<td><code>R? &lt;NR1&gt;</code></td>
+<td>Reads <strong>and erases</strong> up to <code>&lt;NR1&gt;</code> (1–100000) oldest readings. Returns block data (e.g. <code>#279…</code>). <strong>Does not wait for completion</strong></td>
+</tr>
+<tr>
+<td><code>CR-DAQ-025</code></td>
+<td><code>INSTrument:DMM &lt;Boolean&gt;</code> / <code>?</code></td>
+<td>Enable/disable the internal DMM</td>
+</tr>
+<tr>
+<td><code>CR-DAQ-026</code></td>
+<td><code>TIME:SYNC:SERVer "&lt;url&gt;"</code> / <code>?</code></td>
+<td>NTP server</td>
+</tr>
+<tr>
+<td><code>CR-DAQ-027</code></td>
+<td><code>UNIT:TEMPerature C\|F\|K [,(@&lt;ch_list&gt;)]</code> / <code>?</code></td>
+<td>Temperature units</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong><code>CR-DAQ-025</code> is architecturally important and has a trap.</strong> Manual, §6.4: <em>"When disabled, the instrument acts as a switch, allowing external instruments to measure signals routed through the multiplexer modules."</em> — this is how the DAQ routes harness pins to the two external 2831E DMMs. <strong>But: <em>"Changing the state of the internal DMM triggers a Factory Reset (<code>*RST</code>)."</em></strong> So it is a connect-time decision only. Never toggle it mid-sequence: it silently discards the scan list and all channel configuration.</p>
+<p><strong>Reading memory is 100,000 readings and wraps</strong> — <em>"If memory overflows, the oldest readings are overwritten."</em> For long scans use <code>R?</code> to drain periodically, and never assume <code>FETCh?</code> returned everything.</p>
+</blockquote>
+<h3>3.4 CONFigure subsystem (SRC-07 ch. 8, pp.39–45)</h3>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Command</th>
+<th>Parameters</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CR-DAQ-030</code></td>
+<td><code>CONFigure? [(@&lt;ch_list&gt;)]</code></td>
+<td>Returns e.g. <code>"VOLT +1.000000E+01,+3.000000E-06"</code></td>
+</tr>
+<tr>
+<td><code>CR-DAQ-031</code></td>
+<td><code>CONFigure:RESistance\|FRESistance [&lt;range&gt;[,&lt;resolution&gt;]][,(@&lt;ch_list&gt;)]</code></td>
+<td><code>&lt;range&gt;</code>: value | <code>AUTO</code> | <code>MIN</code> | <code>MAX</code> | <code>DEF</code> (<strong>100 Ω to 100 MΩ</strong>). <code>FRESistance</code> = 4-wire</td>
+</tr>
+<tr>
+<td><code>CR-DAQ-032</code></td>
+<td><code>CONFigure[:VOLTage]:AC\|DC [&lt;range&gt;[,&lt;resolution&gt;]][,(@&lt;ch_list&gt;)]</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>CR-DAQ-033</code></td>
+<td><code>CONFigure:CURRent:AC\|DC [&lt;range&gt;[,&lt;resolution&gt;]][,(@&lt;ch_list&gt;)]</code></td>
+<td><strong>DM301 channels 21/22 and DM309 current channels only</strong></td>
+</tr>
+<tr>
+<td><code>CR-DAQ-034</code></td>
+<td><code>CONFigure:FREQuency\|PERiod [&lt;range&gt;[,&lt;resolution&gt;]][,(@&lt;ch_list&gt;)]</code></td>
+<td>Auto range only; value ignored</td>
+</tr>
+<tr>
+<td><code>CR-DAQ-035</code></td>
+<td><code>CONFigure:DIODe [(@&lt;ch_list&gt;)]</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>CR-DAQ-036</code></td>
+<td><code>CONFigure:CAPacitance [&lt;range&gt;[,&lt;resolution&gt;]][,(@&lt;ch_list&gt;)]</code></td>
+<td>1 nF to 100 µF</td>
+</tr>
+<tr>
+<td><code>CR-DAQ-037</code></td>
+<td><code>CONFigure:TEMPerature …</code></td>
+<td>Thermocouple / RTD / thermistor</td>
+</tr>
+<tr>
+<td><code>CR-DAQ-038</code></td>
+<td><code>CONFigure:STRain:…</code></td>
+<td>Direct / quarter / half / full bridge</td>
+</tr>
+<tr>
+<td><code>CR-DAQ-039</code></td>
+<td><code>CONFigure:TOTalize</code></td>
+<td>DM307</td>
+</tr>
+<tr>
+<td><code>CR-DAQ-040</code></td>
+<td><code>CONFigure:DIGital[:BYTE]</code>, <code>CONFigure:DAC:OUTPut</code>, <code>CONFigure:DAC:SENSe</code></td>
+<td>DM307</td>
+</tr>
+</tbody>
+</table>
+<p>Example, verbatim from the manual: <code>CONF:RES 10k,(@101)</code></p>
+<h3>3.5 MEASure subsystem (SRC-07 ch. 14, pp.62–67)</h3>
+<p><code>MEASure:…?</code> configures <strong>and</strong> immediately returns a value. Same parameter shapes as <code>CONFigure</code>.</p>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Query</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CR-DAQ-050</code></td>
+<td><code>MEASure:RESistance\|FRESistance? [&lt;range&gt;[,&lt;resolution&gt;]][,(@&lt;ch_list&gt;)]</code> — e.g. <code>MEAS:RES? 10k,(@101)</code></td>
+</tr>
+<tr>
+<td><code>CR-DAQ-051</code></td>
+<td><code>MEASure[:VOLTage]:AC\|DC? …</code></td>
+</tr>
+<tr>
+<td><code>CR-DAQ-052</code></td>
+<td><code>MEASure:CURRent:AC\|DC? …</code></td>
+</tr>
+<tr>
+<td><code>CR-DAQ-053</code></td>
+<td><code>MEASure:FREQuency\|PERiod? …</code></td>
+</tr>
+<tr>
+<td><code>CR-DAQ-054</code></td>
+<td><code>MEASure:DIODe? [(@&lt;ch_list&gt;)]</code></td>
+</tr>
+<tr>
+<td><code>CR-DAQ-055</code></td>
+<td><code>MEASure:CAPacitance? …</code></td>
+</tr>
+<tr>
+<td><code>CR-DAQ-056</code></td>
+<td><code>MEASure:TEMPerature? …</code></td>
+</tr>
+<tr>
+<td><code>CR-DAQ-057</code></td>
+<td><code>MEASure:TOTalize?</code>, <code>MEASure:DIGital[:BYTE]?</code>, <code>MEASure:DAC:OUTPut?</code>, <code>MEASure:DAC:SENSe?</code></td>
+</tr>
+<tr>
+<td><code>CR-DAQ-058</code></td>
+<td><code>MEASure:STRain:…?</code></td>
+</tr>
+</tbody>
+</table>
+<h3>3.6 ROUTe subsystem — SWITCHING, HIGHEST RISK (SRC-07 ch. 17, pp.74–77)</h3>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Command</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CR-DAQ-060</code></td>
+<td><code>ROUTe:CLOSe (@&lt;ch_list&gt;)</code> / <code>ROUTe:CLOSe? (@&lt;ch_list&gt;)</code></td>
+<td>Closes the specified channels. <strong>Allows multiple channels closed simultaneously.</strong> Does <strong>not</strong> open anything else</td>
+</tr>
+<tr>
+<td><code>CR-DAQ-061</code></td>
+<td><code>ROUTe:CLOSe:EXCLusive (@&lt;ch_list&gt;)</code></td>
+<td>Closes the channel and <strong>opens all other channels on the same bank (break-before-make)</strong></td>
+</tr>
+<tr>
+<td><code>CR-DAQ-062</code></td>
+<td><code>ROUTe:OPEN (@&lt;ch_list&gt;)</code> / <code>?</code></td>
+<td>Opens the specified channels</td>
+</tr>
+<tr>
+<td><code>CR-DAQ-063</code></td>
+<td><code>ROUTe:DONE?</code></td>
+<td>Returns <code>1</code> when all relay operations are finished</td>
+</tr>
+<tr>
+<td><code>CR-DAQ-064</code></td>
+<td><code>ROUTe:SCAN (@&lt;ch_list&gt;)</code> / <code>?</code></td>
+<td>Defines the scan list. <strong><code>ROUTe:SCAN (@)</code> clears it</strong></td>
+</tr>
+<tr>
+<td><code>CR-DAQ-065</code></td>
+<td><code>ROUTe:SCAN:SIZE?</code></td>
+<td>Number of channels in the scan list</td>
+</tr>
+<tr>
+<td><code>CR-DAQ-066</code></td>
+<td><code>ROUTe:MONitor (@&lt;ch_list&gt;)</code> / <code>?</code></td>
+<td>Channel to monitor continuously. <strong>Only one at a time</strong></td>
+</tr>
+<tr>
+<td><code>CR-DAQ-067</code></td>
+<td><code>ROUTe:MONitor:STATe &lt;Boolean&gt;</code> / <code>?</code></td>
+<td>Enable monitor mode</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Mandatory design rules for the route layer:</strong></p>
+<ol>
+<li><strong>Default to <code>CR-DAQ-061</code> (<code>ROUTe:CLOSe:EXCLusive</code>).</strong> Plain <code>ROUTe:CLOSe</code> leaves previously closed channels closed, which on a harness fixture means unintended pin-to-pin connections. Emitting <code>ROUTe:CLOSe</code> must require an explicit, reviewed multi-point intent that has been checked against the forbidden-combination table.</li>
+<li><strong>Synchronize on <code>ROUTe:DONE?</code>, never on a fixed sleep.</strong></li>
+<li><strong>Open before de-energizing and after every sequence</strong>, including abort, timeout, exception and application close.</li>
+<li>No route may be emitted at all until T-04 (fixture schematic, pin map, route table, forbidden combinations) exists and is reviewed.</li>
+</ol>
+<h3>3.7 SENSe — resistance (SRC-07 ch. 18.8, pp.89–92)</h3>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Command</th>
+<th>Parameters</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CR-DAQ-070</code></td>
+<td><code>[SENSe:]RESistance\|FRESistance:NPLCycles &lt;PLCs&gt; [,(@&lt;ch_list&gt;)]</code> / <code>?</code></td>
+<td><strong>0.02 to 200</strong></td>
+</tr>
+<tr>
+<td><code>CR-DAQ-071</code></td>
+<td><code>[SENSe:]RESistance\|FRESistance:APERture &lt;seconds&gt;</code> / <code>?</code></td>
+<td>Integration time in seconds</td>
+</tr>
+<tr>
+<td><code>CR-DAQ-072</code></td>
+<td><code>[SENSe:]RESistance\|FRESistance:APERture:ENABle &lt;state&gt;</code> / <code>?</code></td>
+<td>Use aperture instead of NPLC</td>
+</tr>
+<tr>
+<td><code>CR-DAQ-073</code></td>
+<td><code>[SENSe:]RESistance\|FRESistance:OCOMpensated &lt;state&gt;</code> / <code>?</code></td>
+<td><strong>Offset compensation — cancels thermal EMF.</strong> e.g. <code>RES:OCOM ON,(@101)</code></td>
+</tr>
+<tr>
+<td><code>CR-DAQ-074</code></td>
+<td><code>[SENSe:]RESistance\|FRESistance:POWer:LIMit[:STATe] &lt;state&gt;</code> / <code>?</code></td>
+<td><strong>Low-power mode — prevents self-heating</strong></td>
+</tr>
+<tr>
+<td><code>CR-DAQ-075</code></td>
+<td><code>[SENSe:]RESistance\|FRESistance:RANGe &lt;range&gt;</code> / <code>?</code></td>
+<td>100 Ω to 100 MΩ</td>
+</tr>
+<tr>
+<td><code>CR-DAQ-076</code></td>
+<td><code>[SENSe:]RESistance\|FRESistance:RANGe:AUTO &lt;state&gt;</code> / <code>?</code></td>
+<td><code>OFF</code> | <code>ON</code> | <code>ONCE</code></td>
+</tr>
+<tr>
+<td><code>CR-DAQ-077</code></td>
+<td><code>[SENSe:]RESistance\|FRESistance:ZERO:AUTO &lt;state&gt;</code> / <code>?</code></td>
+<td><code>OFF</code> | <code>ON</code> | <code>ONCE</code></td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>For milliohm-level harness continuity, prefer <strong><code>FRESistance</code></strong> (4-wire) with <strong><code>OCOMpensated ON</code></strong>. The datasheet warns that 2-wire without a math null adds <strong>2 Ω</strong> of error, and module thermal offset is &lt;1–4 µV, which at 1 mA test current is ~1–4 mΩ. Both settings belong in the reviewed recipe, not in driver defaults.</p>
+</blockquote>
+<p>Other <code>SENSe</code> branches follow the same shape: <code>[SENSe:]FUNCtion[:ON]</code>, <code>AVERage:*</code>, <code>VOLTage:*</code> (incl. <code>[SENSe:]VOLTage[:DC]:IMPedance:AUTO</code>), <code>CURRent:*</code>, <code>FREQuency|PERiod:*</code>, <code>TEMPerature:*</code>, <code>STRain:*</code>, <code>TOTalize:*</code>, <code>CAPacitance:*</code>, <code>DIODe:ZERO:AUTO</code>, <code>DIGital:DATA…?</code>.</p>
+<h3>3.8 TRIGger subsystem (SRC-07 ch. 22, pp.139–140)</h3>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Command</th>
+<th>Parameters</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CR-DAQ-080</code></td>
+<td><code>TRIGger:SOURce IMMediate\|TIMer\|EXTernal\|BUS\|ALARm1..4</code> / <code>?</code></td>
+<td><code>IMM</code> scans immediately after <code>INITiate</code>; <code>TIM</code> uses <code>TRIGger:TIMer</code>; <code>EXT</code> waits for a TTL pulse on the rear-panel Ext Trig input; <code>BUS</code> waits for <code>*TRG</code></td>
+</tr>
+<tr>
+<td><code>CR-DAQ-081</code></td>
+<td><code>TRIGger:COUNt &lt;count&gt;\|MIN\|MAX\|DEF\|INFinity</code> / <code>?</code></td>
+<td>1 to 1,000,000, or <code>INFinity</code> (<strong>scans until <code>ABORt</code></strong>)</td>
+</tr>
+<tr>
+<td><code>CR-DAQ-082</code></td>
+<td><code>TRIGger:TIMer &lt;seconds&gt;\|MIN\|MAX\|DEF</code> / <code>?</code></td>
+<td>0 to 360000 s, 1 ms resolution</td>
+</tr>
+<tr>
+<td><code>CR-DAQ-083</code></td>
+<td><code>TRIGger:SLOPe POSitive\|NEGative</code> / <code>?</code></td>
+<td>External trigger edge. Only relevant with <code>TRIGger:SOURce EXTernal</code></td>
+</tr>
+</tbody>
+</table>
+<h3>3.9 CALCulate — limits and scaling (SRC-07 ch. 7, pp.33–37)</h3>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Command</th>
+<th>Parameters</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CR-DAQ-090</code></td>
+<td><code>CALCulate:LIMit:LOWer &lt;value&gt; [,(@&lt;ch_list&gt;)]</code> / <code>?</code></td>
+<td>−1.0E+9 to 1.0E+9</td>
+</tr>
+<tr>
+<td><code>CR-DAQ-091</code></td>
+<td><code>CALCulate:LIMit:UPPer &lt;value&gt; [,(@&lt;ch_list&gt;)]</code> / <code>?</code></td>
+<td>−1.0E+9 to 1.0E+9</td>
+</tr>
+<tr>
+<td><code>CR-DAQ-092</code></td>
+<td><code>CALCulate:LIMit:STATe &lt;Boolean&gt; [,(@&lt;ch_list&gt;)]</code> / <code>?</code></td>
+<td>Per-channel limit testing</td>
+</tr>
+<tr>
+<td><code>CR-DAQ-093</code></td>
+<td><code>CALCulate:SCALe:GAIN</code> / <code>:OFFSet</code> / <code>:STATe</code></td>
+<td>Mx+B scaling</td>
+</tr>
+<tr>
+<td><code>CR-DAQ-094</code></td>
+<td><code>CALCulate:AVERage:ALL?</code> / <code>:AVERage?</code> / <code>:MINimum?</code> / <code>:MAXimum?</code> / <code>:COUNt?</code> / <code>:CLEar</code></td>
+<td>Statistics</td>
+</tr>
+<tr>
+<td><code>CR-DAQ-095</code></td>
+<td><code>CALCulate:SMOothing:RESPonse</code> / <code>:STATe</code></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong><code>CALCulate:LIMit</code> does not replace application-side pass/fail.</strong> Unlike the 2831E, the DAQ <em>can</em> evaluate limits — but the run record must still store the <strong>raw reading</strong> and the application must still compute the verdict. Instrument limit state may be used for alarm outputs and early abort, never as the sole recorded verdict.</p>
+</blockquote>
+<h3>3.10 SYSTem subsystem — identity, errors, LAN (SRC-07 ch. 21, pp.121–137)</h3>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Command</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CR-DAQ-100</code></td>
+<td><code>SYSTem:CTYPe? &lt;slot&gt;</code></td>
+<td><strong>Queries the module installed in slot 1–3.</strong> e.g. <code>SYST:CTYP? 1</code></td>
+</tr>
+<tr>
+<td><code>CR-DAQ-101</code></td>
+<td><code>SYSTem:ERRor?</code></td>
+<td><strong>Queries and clears the next error</strong> — code and message string</td>
+</tr>
+<tr>
+<td><code>CR-DAQ-102</code></td>
+<td><code>SYSTem:SERial?</code></td>
+<td>Instrument serial number</td>
+</tr>
+<tr>
+<td><code>CR-DAQ-103</code></td>
+<td><code>SYSTem:VERSion?</code></td>
+<td>SCPI version</td>
+</tr>
+<tr>
+<td><code>CR-DAQ-104</code></td>
+<td><code>SYSTem:LFRequency?</code></td>
+<td><strong>Detected power line frequency (50 or 60 Hz)</strong></td>
+</tr>
+<tr>
+<td><code>CR-DAQ-105</code></td>
+<td><code>SYSTem:CPON</code></td>
+<td>Card power on — reinitializes the plug-in modules</td>
+</tr>
+<tr>
+<td><code>CR-DAQ-106</code></td>
+<td><code>SYSTem:LOCal</code> / <code>SYSTem:REMote</code></td>
+<td>Front panel unlock / lock</td>
+</tr>
+<tr>
+<td><code>CR-DAQ-107</code></td>
+<td><code>SYSTem:PRESet</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>CR-DAQ-108</code></td>
+<td><code>SYSTem:RELay:CYCLes?</code> / <code>:CLEar</code> / <code>:FACTory?</code></td>
+<td><strong>Relay cycle counters — preventive-maintenance data</strong></td>
+</tr>
+<tr>
+<td><code>CR-DAQ-109</code></td>
+<td><code>SYSTem:TEMPerature?</code>, <code>SYSTem:UPTime?</code>, <code>SYSTem:DATE</code>, <code>SYSTem:TIME</code>, <code>SYSTem:TIME:SCAN?</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>CR-DAQ-110</code></td>
+<td><code>SYSTem:SLOT:LABel</code>, <code>SYSTem:WMESsage</code>, <code>SYSTem:ALARm?</code>, <code>SYSTem:BEEPer…</code>, <code>SYSTem:CLICk:STATe</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>CR-DAQ-111</code></td>
+<td><code>SYSTem:SCPi:MODE</code>, <code>SYSTem:SCPi:AUTO:SAVE</code>, <code>SYSTem:PERSona…</code></td>
+<td>Emulation/identity spoofing — <strong>do not change</strong></td>
+</tr>
+<tr>
+<td><code>CR-DAQ-112</code></td>
+<td><code>SYSTem:COMMunicate:LAN:DHCP\|IPADdress\|SMASk\|GATeway\|DNS\|HOSTname\|MAC?\|DOMain?\|WINS\|UPDate\|TIMeout</code></td>
+<td>LAN configuration</td>
+</tr>
+<tr>
+<td><code>CR-DAQ-113</code></td>
+<td><code>SYSTem:COMMunicate:LAN:TCP:ENABle</code> / <code>:TCP:PORT</code></td>
+<td>Raw socket. Manual example port <strong>5025</strong></td>
+</tr>
+<tr>
+<td><code>CR-DAQ-114</code></td>
+<td><code>SYSTem:COMMunicate:LAN:TELNet:ENABle\|PORT\|ECHO\|TIMeout\|PROMpt\|WMESsage</code></td>
+<td>Telnet. <strong>Default port 5024</strong></td>
+</tr>
+<tr>
+<td><code>CR-DAQ-115</code></td>
+<td><code>SYSTem:COMMunicate:LAN:WEB:ENABle</code></td>
+<td><strong>Web interface on/off</strong></td>
+</tr>
+<tr>
+<td><code>CR-DAQ-116</code></td>
+<td><code>SYSTem:COMMunicate:GPIB:ADDRess</code></td>
+<td>0–30, default 15</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong><code>CR-DAQ-100</code> and <code>CR-DAQ-101</code> change what the application can guarantee.</strong> <code>SYSTem:CTYPe?</code> lets the app <strong>verify the installed module in each slot at connect time</strong> and refuse to run if the configuration does not match the reviewed channel map. <code>SYSTem:ERRor?</code> gives real error reporting — drain the queue after every command batch. Neither has an equivalent on the 2831E.</p>
+<p><strong><code>CR-DAQ-111</code> <code>SYSTem:PERSona</code></strong> changes the identity string the instrument reports. It must never be used: it would defeat the identity check the project depends on.</p>
+<p><strong>Security:</strong> Telnet (<code>CR-DAQ-114</code>) and the web interface (<code>CR-DAQ-115</code>) should be <strong>disabled</strong> on a production station unless IT approves otherwise, and the decision recorded (<code>P0-DOC-01</code> OBS-006).</p>
+</blockquote>
+<h3>3.11 Other subsystems available</h3>
+<p><code>DATA:LAST?</code>, <code>DATA:POINts?</code>, <code>DATA:POINts:EVENt:THReshold</code>, <code>DATA:REMove?</code> (ch. 9) · <code>DIGital:INTerface:MODE\|DATA:OUTPut\|DATA:SETup</code> (ch. 10) · <code>DISPlay</code>, <code>DISPlay:TEXT</code>, <code>DISPlay:TEXT:CLEar</code> (ch. 11) · <code>FORMat:READing:ALARm\|CHANnel\|DATE\|TIME\|TIME:TYPE\|UNIT</code> (ch. 12) · <code>HCOPy:SDUMp:DATA?\|FORMat</code> screen dump (ch. 13) · <code>MMEMory:FORMat:READing:*</code>, <code>MMEMory:LOG[:ENABle]</code> (ch. 15) · <code>OUTPut:ALARm:CLEar\|MODE\|SLOPe</code> (ch. 16) · <code>SOURce:CURRent\|VOLTage\|MODE\|MODE:LOCK\|DIGital:DATA[:BYTE]\|:WORD</code> (ch. 19, DM307) · <code>STATus:ALARm\|OPERation\|QUEStionable :CONDition?\|:ENABle\|[:EVENt]?</code>, <code>STATus:PRESet</code> (ch. 20).</p>
+<blockquote>
+<p><strong><code>FORMat:READing:CHANnel ON</code> is strongly recommended.</strong> It prefixes each value with its channel number, so a returned block cannot be silently mis-associated with the wrong harness pin. Likewise <code>FORMat:READing:DATE</code>/<code>TIME</code> for traceable run records.</p>
+</blockquote>
+<h3>3.12 Deterministic scan sequence (composed from the above)</h3>
+<pre><code>*RST                                  # CR-DAQ-002  clears scan list and config
+SYST:ERR?                             # CR-DAQ-101  drain the error queue
+*IDN?                                 # CR-DAQ-001  record serial + firmware
+SYST:CTYP? 1                          # CR-DAQ-100  verify module in each slot
+SYST:LFR?                             # CR-DAQ-104  read line frequency, do not assume
+FORM:READ:CHAN ON                     # CR-DAQ-...  channel number with every reading
+CONF:FRES 100,(@101:110)              # CR-DAQ-031  4-wire, reviewed range
+FRES:OCOM ON,(@101:110)               # CR-DAQ-073  cancel thermal EMF
+FRES:NPLC 10,(@101:110)               # CR-DAQ-070  reviewed integration time
+ROUT:SCAN (@101:110)                  # CR-DAQ-064  reviewed scan list
+TRIG:SOUR BUS                         # CR-DAQ-080
+TRIG:COUN 1                           # CR-DAQ-081
+INIT                                  # CR-DAQ-021
+*TRG                                  # CR-DAQ-007
+FETC?                                 # CR-DAQ-022
+SYST:ERR?                             # CR-DAQ-101  confirm no error was raised
+</code></pre>
+<p><strong>This sequence is <code>TRANSCRIBED</code>, not <code>APPROVED</code>.</strong> The channel list is illustrative — real channels require the fixture map (T-04) and the module list (T-08).</p>
+<h3>3.13 DAQ3120 items still requiring the user manual or bench work</h3>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Item</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CR-DAQ-OPEN-01</code></td>
+<td><code>SYSTem:CTYPe?</code> response string format</td>
+<td>Not shown in the programming manual — capture it on the bench</td>
+</tr>
+<tr>
+<td><code>CR-DAQ-OPEN-02</code></td>
+<td><code>SYSTem:ERRor?</code> error-code table</td>
+<td>Not in the programming manual</td>
+</tr>
+<tr>
+<td><code>CR-DAQ-OPEN-03</code></td>
+<td>Exact per-module channel numbering (which channel numbers are the DM301 current channels; the manual body says current is on <strong>channels 21 and 22</strong> of DM301, i.e. <code>(@121)</code>/<code>(@122)</code> in slot 1 — <strong>confirm on the bench before use</strong>)</td>
+<td>Partly documented, needs confirmation</td>
+</tr>
+<tr>
+<td><code>CR-DAQ-OPEN-04</code></td>
+<td>Default raw-socket port on the installed unit (manual <em>example</em> uses 5025)</td>
+<td>Confirm by query</td>
+</tr>
+<tr>
+<td><code>CR-DAQ-OPEN-05</code></td>
+<td><code>R?</code> block-data format (<code>#279…</code>) parsing rules</td>
+<td>Confirm on the bench</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<footer>Vehicle Harness Functional Tester &middot; updated 2026-09-24 &middot;
+Source: github.com/Jaramillo35/TestLab, AgentKnowledgeBase/copilot_agent_pack/knowledge.
+Commands shown here are transcribed from manufacturer manuals and are NOT approved for
+hardware execution. The discovery tool may send only the allowlisted strings in the
+specification.</footer>
+</body>
+</html>

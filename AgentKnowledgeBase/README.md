@@ -16,6 +16,7 @@ Knowledge base for the **Vehicle Harness Functional Tester** project. Read in th
 | 7 | `instrument_profiles.yaml` | Machine-readable configuration the application loads. |
 | — | `m365_copilot_agent_setup_for_harness_tester (1).md` | Configuration for the M365 coordinator agent. Reference. |
 | — | `copilot_agent_pack/` (+ `.zip`) | **Knowledge pack for a Microsoft 365 Copilot agent** that builds the DMM/DAQ discovery tool. Setup guide, instructions, and 7 knowledge files in agent-accepted formats. |
+| — | `../docs/` → **https://jaramillo35.github.io/TestLab/** | GitHub Pages copy of the agent knowledge (≤2 URL levels, for Copilot website knowledge). **Generated** by `copilot_agent_pack/build_pages.py` — edit the knowledge files, then re-run it; never edit `docs/` by hand. |
 | — | `../.github/copilot-instructions.md` | Repo-wide rules GitHub Copilot loads automatically. Not optional context. |
 
 ## Source PDFs (repository root)

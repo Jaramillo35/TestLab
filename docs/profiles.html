@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Instrument profiles - B&amp;K 2831E and DAQ3120 - Vehicle Harness Functional Tester</title>
+<meta name="description" content="Capabilities, transports, USB identifiers, DAQ3120 module catalogue and digital I/O pinout, in YAML form.">
+<style>
+body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;max-width:60rem;
+margin:0 auto;padding:1.5rem;line-height:1.5;color:#1b1b1b;background:#fff}
+h1{font-size:1.6rem;margin:.2rem 0 .8rem}
+h2{font-size:1.2rem;margin:2rem 0 .4rem;padding-top:.6rem;border-top:1px solid #ddd}
+h3{font-size:1.05rem;margin:1.4rem 0 .3rem}
+pre{white-space:pre-wrap;word-wrap:break-word;background:#f6f7f8;padding:.8rem 1rem;
+border-radius:6px;font-size:.9rem;line-height:1.4;margin:.4rem 0}
+table{border-collapse:collapse;font-size:.9rem;margin:.6rem 0;display:block;overflow-x:auto}
+th,td{border:1px solid #ccc;padding:.3rem .5rem;vertical-align:top;text-align:left}
+code{font-size:.9em}
+.note{background:#fff8e1;border-left:4px solid #e0a800;padding:.6rem .9rem;margin:1rem 0}
+nav{font-size:.9rem;margin-bottom:1rem}
+footer{margin-top:3rem;font-size:.85rem;color:#555;border-top:1px solid #ddd;padding-top:.8rem}
+</style>
+</head>
+<body>
+<nav><a href="./">Vehicle Harness Functional Tester - discovery tool knowledge</a></nav>
+<h1>Instrument profiles - B&amp;K 2831E and DAQ3120</h1><pre>INSTRUMENT PROFILES - B&amp;K 2831E (x2) and B&amp;K DAQ3120
+Extract of the project&#x27;s instrument_profiles.yaml (YAML text; comments preserved).
+Every number is a MANUFACTURER CAPABILITY, not an approved operating limit.
+&#x27;TBD&#x27; means not yet known - the discovery tool exists to find many of these values.
+==============================================================================
+
+instruments:
+
+  dmm_a:
+    equipment_id: EQ-003
+    role: Harness electrical measurement A
+    model_expected: BK_2831E
+    manufacturer: B&amp;K Precision
+    identity_verified_from_nameplate: false
+    serial_number: TBD
+    firmware_version: TBD
+    calibration_due: TBD
+    required: TBD
+
+    transport:
+      planned: USB_VIRTUAL_COM       # NOT USBTMC - confirmed SRC-02 p.40, p.71
+      class: SERIAL
+      resource: TBD                  # e.g. COM port, assign after discovery, map by serial number
+      # USB bridge identified from B&amp;K&#x27;s own driver package (slabvcp.inf).
+      # Enumerate by vid+pid+serial_number via pyserial comports(); NEVER hard-code a COM number.
+      usb_bridge: SILICON_LABS_CP210x
+      usb_vid: 0x10C4
+      usb_pid: 0xEA60                # dual-port variants are 0xEA70 with Mi_00 / Mi_01
+      driver: CP210x_VCP
+      bundled_driver_version: 6.6.0.0    # dated 2012-10-05, predates Win10/11 - obtain current SiLabs driver
+      # R-DMM-02: CP210x units often share a factory serial string. Test with BOTH meters
+      # connected before relying on serial-based mapping; if they collide, fall back to a
+      # documented physical-port binding and make it a commissioning checklist item.
+      serial_uniqueness_verified: false
+      baud_rate: 9600                # factory default, SRC-02 p.41
+      data_bits: 8
+      stop_bits: 1
+      parity: none
+      terminator: LF                 # LF or CR, set on the instrument, SRC-02 p.40
+      # Documented protocol quirks the driver MUST implement - SRC-02 p.41 5.2.4
+      per_character_echo_handshake: true
+      one_query_per_command_line: true
+      slow_commands_require_wait: [&quot;*RST&quot;]
+      response_format: &quot;SD.DDDDDDESDDD&lt;NL&gt;&quot;
+
+    capability:
+      identify_command_id: CR-2831E-001
+      functions: [VOLT_DC, VOLT_AC, CURR_DC, CURR_AC, RESISTANCE_2W, FREQUENCY, PERIOD, DIODE, CONTINUITY]
+      resistance_wire_mode: 2_WIRE_ONLY
+      max_input_voltage_dc_v: 1000
+      max_input_voltage_ac_vrms: 750
+      max_input_current_a: 20
+      max_input_current_20a_range_duration_s: 20     # &gt;10-20 A readable for 20 s max, SRC-02 p.66
+      current_input_fuse: &quot;1 A / 250 V&quot;
+      resistance_open_circuit_voltage_v: 5.5
+      continuity_range_ohm: 200
+      continuity_threshold_pct_of_range: 5           # ~10 ohm
+      continuity_test_current_a: 0.0005
+      warmup_minutes: 30
+      resistance_ranges_ohm: [200, 2.0e3, 20.0e3, 200.0e3, 2.0e6, 20.0e6]
+      # Ranges &lt;= 20 kohm are specified ONLY under REL (null). See P0-DOC-02 2.5.
+      resistance_low_ranges_require_rel: [200, 2.0e3, 20.0e3]
+      reading_rates_per_second:
+        dcv:  {slow: 5,   med: 10,  fast: 25}
+        dci:  {slow: 5,   med: 10,  fast: 25}
+        acv:  {slow: 5,   med: 10,  fast: 25}
+        aci:  {slow: 5,   med: 10,  fast: 25}
+        ohm_below_2M:  {slow: 5,   med: 10,  fast: 25}
+        ohm_20M_above: {slow: 1.3, med: 2.6, fast: 5.6}
+        dual_display:  {slow: 0.9, med: 0.9, fast: 0.8}
+
+    approved_limits:
+      approved_max_voltage_v: TBD
+      approved_max_current_a: TBD
+
+    known_gaps:
+      - &quot;No error/status queue query documented - instrument error state is not machine-readable (CR-2831E-BLOCKED-04)&quot;
+      - &quot;No SCPI limit/compare subsystem - pass/fail must be evaluated in the application (CR-2831E-BLOCKED-03)&quot;
+      - &quot;HOLD subsystem listed but not documented (CR-2831E-BLOCKED-02)&quot;
+      - &quot;:READ? and :MEASure? referenced but never defined (CR-2831E-BLOCKED-01)&quot;
+
+  dmm_b:
+    equipment_id: EQ-004
+    role: Harness electrical measurement B
+    same_profile_as: dmm_a
+    identity_verified_from_nameplate: false
+    serial_number: TBD
+    firmware_version: TBD
+    transport:
+      planned: USB_VIRTUAL_COM
+      resource: TBD                  # MUST be mapped by serial number, not by port order
+    approved_limits:
+      approved_max_voltage_v: TBD
+      approved_max_current_a: TBD
+
+  daq:
+    equipment_id: EQ-005
+    role: Multi-channel harness measurement and switching
+    model_expected: BK_DAQ3120
+    manufacturer: B&amp;K Precision
+    identity_verified_from_nameplate: false
+    serial_number: TBD
+    firmware_version: TBD
+    calibration_due: TBD
+    required: TBD
+
+    transport:
+      planned: LAN                   # per concept drawing S2 / COM-004
+      available: [LAN, USB_TMC, USB_VCP, MICRO_GPIB_OPTION]
+      resource: TBD
+      ip_address: TBD
+      production_transport_declared: false
+      ethernet_speed: 10BaseT_100BaseTx
+      usb_device_port_protocol: SELECTABLE_TMC_OR_CDC   # front panel INTERFACE CONFIGURATION menu
+      usb_speed: USB_2_0_FULL_SPEED
+      gpib_address_default: 15       # range 0-30, -GPIB models only
+      raw_socket_port: TBD           # manual example uses 5025; confirm by query on the unit
+      telnet_port_default: 5024
+      # Disable on a production station unless IT approves; both are SCPI-settable.
+      telnet_enabled: DISABLE_UNLESS_IT_APPROVED
+      web_interface_enabled: DISABLE_UNLESS_IT_APPROVED
+
+    command_register_status: TRANSCRIBED
+    programming_manual: &quot;manuals/DAQ3120_programming_manual.pdf (139 pp, version 2026-01-07)&quot;
+    # Machine-readable identity and health - unlike the 2831E.
+    identity_query_available: true    # *IDN? -&gt; &quot;B&amp;K Precision, DAQ3120, &lt;Serial&gt;, &lt;Firmware&gt;&quot;
+    error_queue_query_available: true # SYSTem:ERRor?
+    module_query_available: true      # SYSTem:CTYPe? &lt;slot 1-3&gt; - verify modules at connect time
+    line_frequency_query_available: true  # SYSTem:LFRequency? - read it, do not assume
+
+    capability:
+      slots: 3
+      max_channels_per_system: 120
+      builtin_dmm_digits: 6.5
+      internal_memory_samples: 100000
+      max_reading_rate_per_second: 38400
+      stabilization_minutes: 60
+      ac_input: &quot;100-240 VAC +/-10%, 50/60 Hz, 50 VA max&quot;
+      rack_height_mm: 88             # ~2U - P0-DOC-01 S1 shows 3U, discrepancy to resolve
+      rackmount_kit: RKDAQ
+      digital_io:
+        alarm_outputs: 4
+        eom_output: 1
+        external_trigger_input: 1
+      dc_voltage_ranges_v: [0.1, 1, 10, 100, 600]
+      dc_voltage_input_protection_v: 600
+      resistance_ranges_ohm: [100, 1.0e3, 10.0e3, 100.0e3, 1.0e6, 10.0e6, 100.0e6, 1.0e9]
+      # 2-wire without math null adds 2 ohm error - decisive for harness continuity
+      resistance_2wire_without_null_extra_error_ohm: 2
+      resistance_100M_and_1G_are_2wire_only: true
+      dc_current_ranges_a: [1.0e-6, 10.0e-6, 100.0e-6, 1.0e-3, 10.0e-3, 100.0e-3, 2]
+      dc_current_input_fuse: &quot;internal 250 V fuse for 2 A&quot;
+
+    # Channel addressing is &lt;slot&gt;&lt;channel&gt;: slot 1 -&gt; 1xx, slot 2 -&gt; 2xx, slot 3 -&gt; 3xx.
+    # Computed &quot;Computer Channels&quot; are 401-420.
+    channel_addressing: &quot;(@&lt;slot&gt;&lt;ch&gt;)&quot;
+    computer_channels: [401, 420]
+
+    installed_modules: TBD           # MUST be physically recorded - see finding F-DAQ-01.
+                                     # SYSTem:CTYPe? &lt;slot&gt; can verify this at connect time.
+    # Reference data for whichever modules turn out to be installed.
+    # NOTE: the datasheet lists 5 modules; the USER MANUAL lists 7. DM307 and DM308 below
+    # come from the user manual (P0-DOC-03 3.4) and were previously unknown to this project.
+    module_catalog:
+      DM300: {channels: 20, current_channels: 0, switching: SOLID_STATE_2W,   scan_ch_per_s: 450, max_voltage_v: 120, max_current_a: null, four_wire: true,  internal_dmm: true,  notes: &quot;two 10-ch banks, fully isolated, CJC built in. NO current, RTD, thermistor or capacitance&quot;}
+      DM301: {channels: 20, current_channels: 2, switching: ARMATURE_2W,      scan_ch_per_s: 80,  max_voltage_v: 300, max_current_a: 1,    four_wire: true,  internal_dmm: true,  notes: &quot;2W and 4W mixable on same module, CJC built in. Current is on channels 21 and 22 only - CONFIRM addressing on the bench (CR-DAQ-OPEN-03)&quot;}
+      DM303: {channels: 40, current_channels: 0, switching: ARMATURE_1W,      scan_ch_per_s: 80,  max_voltage_v: 300, max_current_a: null, four_wire: false, internal_dmm: true,  notes: &quot;common signal ground, floatable to 300 V, no current, no 4-wire&quot;}
+      DM304: {channels: 32, current_channels: 0, switching: MATRIX_4x8_2W,    scan_ch_per_s: null, max_voltage_v: 300, max_current_a: null, four_wire: null, internal_dmm: false, notes: &quot;3 ms switching, expandable to 96 cross-points, DOES NOT connect to built-in DMM&quot;}
+      DM307: {channels: 16, current_channels: 0, switching: MULTIFUNCTION,    scan_ch_per_s: null, max_voltage_v: 42,  max_current_a: null, four_wire: null, internal_dmm: false, notes: &quot;16-bit digital I/O (two 8-bit registers), 1x 100 kHz totalizer input (42 V), 2x 18-bit DAC output +/-12 V @ +/-24 mA. Stimulus source candidate&quot;}
+      DM308: {channels: 20, current_channels: 0, switching: FORM_C_SPDT_RELAY, scan_ch_per_s: null, max_voltage_v: 300, max_current_a: null, four_wire: null, internal_dmm: false, notes: &quot;Actuator / general-purpose switch. Thermal offset &lt;4 uV. Fixture ACTUATION candidate - not considered in P0-DOC-01&quot;}
+      DM309: {channels: 8,  current_channels: 2, switching: ARMATURE_2W,      scan_ch_per_s: 60,  max_voltage_v: 600, max_current_a: 2,    four_wire: true,  internal_dmm: true,  notes: &quot;600 VDC / 400 Vrms, per-channel fuse in module, TC needs EXTERNAL cold junction and manual reference&quot;}
+
+    # DB-9 female, rear panel. TTL SIGNALLING ONLY - not a safety-rated interface.
+    # Must never be presented as proof that hazardous energy is removed.
+    digital_io:
+      connector: DB9_FEMALE
+      safety_rated: false
+      pins:
+        1: {name: Alarm_OUT1, dir: out, type: TTL, note: &quot;selectable TTL logic Hi or Lo&quot;}
+        2: {name: Alarm_OUT2, dir: out, type: TTL, note: &quot;selectable TTL logic Hi or Lo&quot;}
+        3: {name: Alarm_OUT3, dir: out, type: TTL, note: &quot;selectable TTL logic Hi or Lo&quot;}
+        4: {name: Alarm_OUT4, dir: out, type: TTL, note: &quot;selectable TTL logic Hi or Lo&quot;}
+        5: {name: EOM_Out,    dir: out, type: TTL, note: &quot;End of Measurement - activates when a compare measurement completes&quot;}
+        6: {name: Ext_Trig_In, dir: in, type: TTL, note: &quot;external trigger input, pulse &gt;= 10 us&quot;}
+        7: {name: Digital_Ground, dir: null, type: GND, note: &quot;chassis ground for digital circuits&quot;}
+        8: {name: NC, dir: null, type: null, note: &quot;not connected&quot;}
+        9: {name: NC, dir: null, type: null, note: &quot;not connected&quot;}
+
+    # Switching safety rules - see command_register.md 3.6
+    routing_rules:
+      default_close_command: ROUTe_CLOSe_EXCLusive   # break-before-make
+      plain_close_requires_reviewed_intent: true     # ROUTe:CLOSe leaves other channels closed
+      synchronize_on: ROUTe_DONE                     # never a fixed sleep
+      open_all_on_exit: true                         # incl. abort, timeout, exception, app close
+      routes_blocked_until_fixture_map_exists: true
+
+    # INSTrument:DMM OFF turns the DAQ into a pure switch so the external 2831E DMMs
+    # can measure routed harness pins. TOGGLING IT FORCES A FACTORY RESET (*RST),
+    # discarding the scan list and all channel configuration - connect-time decision only.
+    internal_dmm_mode: TBD                    # ON = internal DMM measures, OFF = pure switch
+    internal_dmm_toggle_forces_factory_reset: true
+
+    channel_map: TBD                 # requires fixture schematic - P0-DOC-01 OBS-009
+    forbidden_route_combinations: TBD
+    approved_limits:
+      approved_max_voltage_v: TBD
+      approved_max_current_a: TBD
+
+    known_gaps:
+      - &quot;F-DAQ-01: &#x27;60 channel with DM301&#x27; implies 3 x DM301; module list must be physically confirmed&quot;
+      - &quot;F-DAQ-02: DAQ cannot measure DUT current (1 A / 2 A max vs 240 A DUT)&quot;
+      - &quot;F-DAQ-03: 4-wire pairs bank-1 with bank-2 channels, halving usable 4-wire points&quot;
+      - &quot;Rack height 2U per datasheet vs 3U in P0-DOC-01 drawing S1&quot;
+      - &quot;R-DAQ-06: module lineup is 7 not 5; DM308 (Form C actuator) and DM307 (DAC + DIO) newly identified&quot;
+      - &quot;CR-DAQ-OPEN-01: SYSTem:CTYPe? response string format not documented - capture on bench&quot;
+      - &quot;CR-DAQ-OPEN-02: SYSTem:ERRor? error-code table not in the programming manual&quot;
+      - &quot;CR-DAQ-OPEN-03: DM301 current channel addressing (21/22 -&gt; @121/@122?) needs bench confirmation&quot;
+      - &quot;CR-DAQ-OPEN-05: R? block-data format (#279...) parsing rules need bench confirmation&quot;
+</pre>
+<footer>Vehicle Harness Functional Tester &middot; updated 2026-09-24 &middot;
+Source: github.com/Jaramillo35/TestLab, AgentKnowledgeBase/copilot_agent_pack/knowledge.
+Commands shown here are transcribed from manufacturer manuals and are NOT approved for
+hardware execution. The discovery tool may send only the allowlisted strings in the
+specification.</footer>
+</body>
+</html>

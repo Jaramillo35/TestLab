@@ -68,7 +68,7 @@ B&K DAQ3120. This file is for YOU - do not upload it as knowledge.
 
 
 =====================================================================
-4. ADD THE KNOWLEDGE - in this order of preference
+4. ADD THE KNOWLEDGE - in this order of preference (A, B, C, D)
 =====================================================================
 
   OPTION A - upload the files straight into the agent  (best)
@@ -94,6 +94,63 @@ B&K DAQ3120. This file is for YOU - do not upload it as knowledge.
     becomes the agent's knowledge, so use a site that contains only these
     files - otherwise unrelated documents get mixed in. You may need your
     IT / SharePoint admin to create the site.
+
+
+  OPTION D - the project website (GitHub Pages), if you must use a public URL
+    The knowledge is also published as a small website whose address is only
+    ONE level deep, so it passes the 2-level check:
+
+        https://jaramillo35.github.io/TestLab/
+
+    Add that single address as the public-website knowledge source. Bing's
+    site-scoped search covers every page under it (all pages are 2 levels).
+
+    Two caveats, both from how website knowledge works:
+      - The agent only sees what BING HAS INDEXED. A new site is usually
+        indexed within days, but that is not guaranteed. Step 2 below asks
+        Bing to crawl it now.
+      - The agent gets search EXCERPTS, not whole files. Options A and B give
+        it the complete files and remain more reliable for the spec.
+    You can use D together with A or B.
+
+    Step 1 - switch the website on (once, about 1 minute)
+      On GitHub open the TestLab repository > Settings > Pages.
+      Under "Build and deployment": Source = Deploy from a branch,
+      Branch = main, folder = /docs, then Save.
+      After a minute or two the site is live at https://jaramillo35.github.io/TestLab/
+
+    Step 2 - ask Bing to crawl it (once, after step 1 is live)
+      From a Windows PC, run this in PowerShell:
+
+$body = @{
+  host        = "jaramillo35.github.io"
+  key         = "7f3c9e2a4b8d41f6a0c5e9b2d7f14a38"
+  keyLocation = "https://jaramillo35.github.io/TestLab/7f3c9e2a4b8d41f6a0c5e9b2d7f14a38.txt"
+  urlList     = @(
+    "https://jaramillo35.github.io/TestLab/",
+    "https://jaramillo35.github.io/TestLab/spec.html",
+    "https://jaramillo35.github.io/TestLab/operator.html",
+    "https://jaramillo35.github.io/TestLab/commands.html",
+    "https://jaramillo35.github.io/TestLab/context.html",
+    "https://jaramillo35.github.io/TestLab/profiles.html",
+    "https://jaramillo35.github.io/TestLab/bk-2831e-manual.pdf",
+    "https://jaramillo35.github.io/TestLab/daq3120-programming-manual.pdf"
+  )
+} | ConvertTo-Json
+Invoke-RestMethod -Uri "https://api.indexnow.org/IndexNow" -Method Post -ContentType "application/json; charset=utf-8" -Body $body
+
+      No error = accepted. This uses IndexNow, Bing's official way to announce
+      new pages. It speeds up crawling; it cannot force indexing.
+      Optional: add the site in Bing Webmaster Tools and submit
+      https://jaramillo35.github.io/TestLab/sitemap.xml - its URL Inspection tool shows whether a page is indexed.
+
+    Step 3 - check the agent can actually see it
+      Ask the agent:
+        According to the discovery tool specification website, what exact
+        phrase must the operator type before an active session?
+      Correct answer: INPUTS DISCONNECTED - citing the website. If the agent
+      says it cannot find it, Bing has not indexed the site yet. Wait a day
+      and ask again, and use option A or B meanwhile.
 
 
 =====================================================================
