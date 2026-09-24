@@ -15,6 +15,7 @@ Knowledge base for the **Vehicle Harness Functional Tester** project. Read in th
 | 6 | `command_register.md` | The only place a hardware command may come from. 0 approved entries today. |
 | 7 | `instrument_profiles.yaml` | Machine-readable configuration the application loads. |
 | — | `m365_copilot_agent_setup_for_harness_tester (1).md` | Configuration for the M365 coordinator agent. Reference. |
+| — | `copilot_agent_pack/` (+ `.zip`) | **Knowledge pack for a Microsoft 365 Copilot agent** that builds the DMM/DAQ discovery tool. Setup guide, instructions, and 7 knowledge files in agent-accepted formats. |
 | — | `../.github/copilot-instructions.md` | Repo-wide rules GitHub Copilot loads automatically. Not optional context. |
 
 ## Source PDFs (repository root)

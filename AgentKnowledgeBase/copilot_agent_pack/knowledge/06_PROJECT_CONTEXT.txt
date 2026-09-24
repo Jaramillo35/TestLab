@@ -1,0 +1,77 @@
+PROJECT CONTEXT - why the discovery tool exists
+Vehicle Harness Functional Tester
+Version: 2026-09-24
+
+WHAT THE PROJECT IS
+A Python desktop application that will coordinate a rack of instruments to
+test automotive wiring harnesses: two B&K 2831E multimeters, a B&K DAQ3120
+data acquisition system, a Tektronix TBS2104B oscilloscope with a TCPA400
+current-probe amplifier, and an ITECH IT-M3906B-32-240 regenerative DC power
+supply (up to 6 kW, 240 A, bidirectional - it can also sink current and feed
+energy back to the building supply).
+
+WHERE IT STANDS
+- Phase 0 (requirements, documentation, safety inputs): in progress.
+- The main application runs SIMULATION-ONLY. Real-hardware mode is disabled.
+- No command is APPROVED for hardware execution yet. Commands are TRANSCRIBED
+  from manufacturer manuals with page citations, pending review.
+
+INSTRUMENT DOCUMENTATION STATUS
+  B&K 2831E        TRANSCRIBED - full command set (knowledge file 04)
+  B&K DAQ3120      TRANSCRIBED - full programming manual (knowledge file 05)
+  Tektronix scope  PROVISIONAL - only the wrong-series manual is available
+  ITECH supply     BLOCKED - programming guide not available
+The discovery tool works only with the first two. The scope and supply are
+OUT OF SCOPE for it and must never be commanded by it.
+
+WHY A DISCOVERY TOOL
+Many facts needed to build the GUI and the real drivers can only come from
+the physical instruments: serial numbers, firmware versions, which DAQ modules
+are installed in which slots, which channel numbers actually exist, the IP
+address and socket port, response formats that the manuals do not document,
+and real response timing (to set timeouts). The project plan requires this
+"read-only discovery" before any real instrument setting is recorded.
+
+DECISIONS ALREADY MADE THAT AFFECT THE TOOL
+- The 2831E is driven as a serial port (USB virtual COM, Silicon Labs CP210x),
+  not USBTMC. Meters are identified by USB VID 0x10C4 / PID 0xEA60 plus serial
+  number - never by COM-port number.
+- The only documented 2831E read sequence is TRIGger:SOURce BUS -> *TRG ->
+  :FETCh?. The 2831E :READ? and :MEASure? are referenced in its manual but
+  never defined, so they are not used.
+- Pass/fail verdicts are computed in the application from raw readings,
+  never delegated to an instrument's limit feature.
+- On the DAQ, the internal-DMM setting is never changed at runtime: changing
+  it forces a factory reset.
+- On the DAQ, relays are only ever closed break-before-make
+  (ROUTe:CLOSe:EXCLusive) in the future application. Plain ROUTe:CLOSe can
+  short harness pins. The discovery tool closes no relays at all.
+- No VISA library: the DAQ is reached over a plain TCP socket (stdlib), the
+  meters over pyserial.
+
+OPEN QUESTIONS THE DISCOVERY SESSIONS WILL ANSWER
+- Serial numbers and firmware of all three instruments.
+- Which modules are in the DAQ's three slots, and which channel numbers exist
+  (including whether the DM301 current channels are numbered x21 and x22).
+- The DAQ's IP address and SCPI socket port (the manual gives no default IP;
+  port 5025 is only an example in the manual).
+- The DAQ's SYSTem:CTYPe? and SYSTem:ERRor? response formats (undocumented).
+- Whether the two 2831E meters report distinct USB serial numbers.
+- Response latencies, to set timeouts.
+- The 2831E overload reading format and confirmation of :FETCh? staleness.
+
+WHAT COMES AFTER
+1. The generated discovery code is reviewed against the specification BEFORE
+   it is connected to any instrument.
+2. Operator runs sessions S1-S7 (knowledge file 02).
+3. Results are merged into the instrument profiles.
+4. GUI and simulated drivers are built using the discovered facts.
+Real-hardware control of the scope and supply remains blocked until their
+manuals are obtained, reviewed, and a responsible engineer authorizes it.
+
+SAFETY PRINCIPLES THAT NEVER CHANGE
+- Never invent an instrument command. Only manual-cited, reviewed commands.
+- A manufacturer capability is not an approved operating limit.
+- Physical safety (E-stop, interlocks, contactors, fuses) works without the PC.
+  Software may monitor it; it is never the safety function.
+- Never weaken a test or a safety check to make something pass.

@@ -1,0 +1,468 @@
+DISCOVERY TOOL SPECIFICATION - for Copilot Chat
+Vehicle Harness Functional Tester
+Devices: B&K Precision 2831E bench multimeter, B&K Precision DAQ3120 data acquisition system
+Version: 2026-09-24
+
+This file is SELF-CONTAINED. Everything you need is in it. Read ALL of it before
+writing any code. Then follow section 9 (DELIVERY FORMAT) exactly.
+
+
+=====================================================================
+1. WHAT YOU ARE BUILDING
+=====================================================================
+
+A small Python command-line tool that an operator runs at a test bench. It
+connects to ONE instrument at a time, asks it read-only questions, and saves a
+complete record of the answers. That record will later be used to build a GUI
+and the real instrument drivers, so completeness and raw fidelity matter more
+than speed.
+
+It talks to exactly two kinds of instrument:
+  - B&K Precision 2831E multimeter, over USB (the PC sees a serial COM port)
+  - B&K Precision DAQ3120, over Ethernet (raw TCP socket) or USB (serial COM port)
+
+Python 3.11+. Dependencies: pyserial, PyYAML, pytest. NOTHING ELSE.
+Do NOT use PyVISA, NI-VISA, or any VISA library.
+
+
+=====================================================================
+2. NON-NEGOTIABLE RULES
+=====================================================================
+
+This project drives lab equipment that includes a 6 kW, 240 A power supply.
+These rules come from the project's safety charter and override anything else.
+
+R1. NEVER INVENT A COMMAND. Every string the tool sends must come from the
+    allowlists in sections 5 and 6 of this file, exactly as written. Do not
+    add commands you "know" from other instruments, other B&K models, SCPI
+    conventions, or training data. If you think a command is missing, say so
+    in plain text and do NOT add it.
+
+R2. READ-ONLY BY DEFAULT. The tool queries; it does not change settings. The
+    only exceptions are listed explicitly in sections 5.3, 6.3 and 6.4.
+
+R3. ONLY THESE TWO INSTRUMENTS. The tool must refuse to continue if the
+    instrument does not identify as a 2831E or a DAQ3120 (section 4.3). It
+    must never talk to a power supply or an oscilloscope.
+
+R4. NEVER WEAKEN A TEST OR A SAFETY CHECK to make something pass.
+
+R5. WHEN UNSURE, STOP AND SAY SO. "I don't know" is a correct answer here. A
+    plausible-looking guess at an instrument command is the worst possible
+    outcome, because it looks right and is wrong.
+
+A NOTE ON AN APPARENT CONFLICT
+The project's main application currently runs in a simulation-only mode that
+never opens real ports. THIS TOOL IS DIFFERENT AND IS ALLOWED TO OPEN REAL
+SERIAL PORTS AND TCP SOCKETS. It is the "read-only discovery" step the project
+plan requires before any real instrument settings are recorded. It is a
+separate bench utility, not part of the application. R1-R5 still apply in
+full.
+
+
+=====================================================================
+3. FILES TO PRODUCE
+=====================================================================
+
+Produce exactly these files, and no others:
+
+  requirements-discovery.txt          pyserial, PyYAML, pytest - nothing else
+  tools/__init__.py                   empty
+  tools/discovery/__init__.py         version string only
+  tools/discovery/allowlist.py        the ONLY place command strings live
+  tools/discovery/transcript.py       byte-level TX/RX log
+  tools/discovery/links.py            SerialLink (echo mode + line mode), SocketLink
+  tools/discovery/probe_bk2831e.py    the multimeter probe
+  tools/discovery/probe_daq3120.py    the DAQ probe
+  tools/discovery/report.py           JSON, Markdown and YAML output
+  tools/discovery/__main__.py         command-line interface
+  tests/__init__.py                   empty
+  tests/discovery/__init__.py         empty
+  tests/discovery/fakes.py            in-memory fake instruments for tests
+  tests/discovery/test_allowlist.py
+  tests/discovery/test_links.py
+  tests/discovery/test_probe_bk2831e.py
+  tests/discovery/test_probe_daq3120.py
+  tests/discovery/test_report.py
+
+Style: type hints everywhere; small functions; explicit exception classes;
+the standard logging module; docstrings on public functions.
+
+
+=====================================================================
+4. SAFETY ARCHITECTURE - the most important part
+=====================================================================
+
+4.1 ALLOWLIST ENFORCED AT THE TRANSPORT
+    Every string the tool can transmit is defined in allowlist.py, each with a
+    comment giving its reference id (e.g. "# CR-2831E-001"). SerialLink and
+    SocketLink check every outgoing command against the allowlist for the
+    current device AND current tier BEFORE writing a single byte. Anything not
+    on the list raises CommandNotAllowed.
+    The ids (CR-2831E-nnn, CR-DAQ-nnn, "register section 3.11") point to the
+    project's command register, which cites the manufacturer manual page for
+    each command. You do not need that document - just copy the id into the
+    comment exactly as given here.
+    Probes never assemble command strings freely. Parameterised forms (a slot
+    number, a channel number) are validated against a strict regular
+    expression first.
+
+4.2 TWO TIERS
+    Tier 1 (default): read-only queries only.
+    Tier 2: enabled only when BOTH (a) --active is given AND (b) the operator
+    types the exact phrase INPUTS DISCONNECTED at an interactive prompt. Tier
+    2 adds only the commands listed in 5.3 and 6.4.
+
+4.3 IDENTITY GATE
+    The first command of every session is *IDN?.
+    - dmm session: the response must start with "2831E Multimeter".
+    - daq session: the response must start with "B&K Precision, DAQ3120".
+    If it does not, STOP IMMEDIATELY. Send nothing else. Write a report saying
+    why. A response mentioning 5491B must be rejected - that model shares the
+    2831E manual but has different ranges.
+
+4.4 NEVER SEND - in any tier. Write a test that tries every one of these and
+    proves each raises CommandNotAllowed before anything is written.
+      *RST   *RCL   *SAV
+      INSTrument:DMM ON / OFF / 0 / 1   (setting it FACTORY-RESETS the DAQ)
+      any ROUTe command that does not end in "?"
+      CONFigure or MEASure without "?"   (they reconfigure channels)
+      READ?   INITiate   ABORt
+      R?   DATA:REMove?                  (both ERASE stored readings)
+      SYSTem:PRESet   SYSTem:CPON
+      SYSTem:PERSona in any set form     SYSTem:SCPi:MODE in any set form
+      SYSTem:RELay:CYCLes:CLEar
+      any SYSTem:COMMunicate command that does not end in "?"
+      :DISPlay:ENABle OFF
+      :READ?   :MEASure?                 (2831E: referenced but never defined)
+      any 2831E ":REFerence?" VALUE query, e.g. :RESistance:REFerence?
+          (it errors if no reference was ever set. The ":REFerence:STATe?"
+           queries are fine and are on the allowlist.)
+
+
+=====================================================================
+5. B&K 2831E MULTIMETER
+=====================================================================
+
+5.1 TRANSPORT FACTS (from the manufacturer's manual)
+    - USB "virtual COM": the PC sees a serial port. The USB bridge is a
+      Silicon Labs CP210x, USB VID 0x10C4, PID 0xEA60.
+    - Serial settings: 8 data bits, no parity, 1 stop bit.
+    - Baud: 600, 1200, 2400, 4800, 9600, 19200, 38400. Factory default 9600.
+    - Terminator: LF or CR, chosen on the instrument's front panel.
+    - CHARACTER ECHO: the meter echoes EVERY character it receives. The
+      controller must send one character, wait for its echo, then send the
+      next. If an echo does not arrive, the meter may be busy: resend that
+      character, up to 3 attempts, then fail the command with a typed error.
+      Tolerate the terminator being echoed or not.
+    - ONE QUERY PER COMMAND LINE. Strip the echoed command from what comes
+      back before parsing the response.
+    - *RST is slow. (It is not on the allowlist; mentioned for completeness.)
+    - Reading format: SD.DDDDDDESDDD<NL>
+        S = sign (+/-), D = digit, E = exponent marker (a "+" exponent sign
+        may be omitted), NL = ASCII 10.
+      Keep the RAW string next to every parsed value.
+    - The meter has NO error-queue query. The only failure signal is "no
+      answer". Record it precisely.
+    - *IDN? returns "<product>,<version>" e.g.
+        2831E Multimeter,Ver1.0.09.12.03
+      IT CONTAINS NO SERIAL NUMBER. Two meters are indistinguishable by *IDN?.
+    - If the very first character gets no echo, report:
+        "No echo - check baud (front panel C: SYS MEU > 2: BAUD RAT),
+         TX TERM (C: SYS MEU > 3: TX TERM), and that this is the meter's
+         USB port."
+
+5.2 TIER 1 ALLOWLIST (queries only)
+    *IDN?                                   CR-2831E-001
+    :FUNCtion?                              CR-2831E-011
+    TRIGger:SOURce?                         CR-2831E-091
+    :DISPlay:ENABle?                        CR-2831E-111
+    :FETCh?                                 CR-2831E-100
+    For each <fn> in VOLTage:DC, VOLTage:AC, CURRent:DC, CURRent:AC, RESistance:
+        :<fn>:RANGe?
+        :<fn>:RANGe:AUTO?
+        :<fn>:NPLCycles?
+        :<fn>:REFerence:STATe?
+      ids (all CR-2831E-):
+        RESistance 023 / 025 / 021 / 029
+        VOLTage:DC 041 / 042 / 040 / 044
+        VOLTage:AC 047 / 048 / 046 / 050
+        CURRent:DC 061 / 062 / 060 / 064
+        CURRent:AC 067 / 068 / 066 / 070
+    :FREQuency:THReshold:VOLTage:RANGe?     CR-2831E-080
+    :FREQuency:REFerence:STATe?             CR-2831E-082
+    :PERiod:THReshold:VOLTage:RANGe?        CR-2831E-084
+    :PERiod:REFerence:STATe?                CR-2831E-086
+    Some per-function queries may not answer while a different function is
+    active. A timeout on one query is recorded and the session continues.
+
+    IMPORTANT: :FETCh? returns the LAST reading and does NOT trigger a new
+    one. It keeps returning the same value until a new measurement happens.
+    A repeated identical value is NOT evidence of a fresh measurement.
+
+5.3 TIER 2 (only with --active and "INPUTS DISCONNECTED")
+    1. Record the as-found :FUNCtion? and TRIGger:SOURce?
+    2. Send, in order:
+         TRIGger:SOURce BUS                 CR-2831E-090
+         :FUNCtion RESistance               CR-2831E-010
+         *TRG                               CR-2831E-003
+         :FETCh?                            CR-2831E-100
+         :FETCh?   (again, WITHOUT a new *TRG)
+    3. Capture: the open-input (overload) reading string exactly as returned;
+       whether the second :FETCh? repeats the first; the *TRG-to-:FETCh?
+       latency.
+    4. RESTORE: send ":FUNCtion <as-found value>" and
+       "TRIGger:SOURce <as-found value>" - only those two, only with the
+       as-found values - then verify both by query.
+       Valid function values: VOLTage:AC VOLTage:DC CURRent:AC CURRent:DC
+         RESistance FREQuency PERiod DIODe CONTinuity
+       Valid trigger sources: IMMediate BUS MANual
+       If the restore cannot be verified, that goes in the FIRST LINE of
+       the report.
+
+5.4 LINK CHARACTERISATION (tier 1)
+    50 x *IDN?: min / median / max round-trip time, failure count, and a
+    recommended timeout = max x 3, rounded up. Also the average time per
+    echoed character.
+
+5.5 DMM-PAIR MODE
+    Used with BOTH meters plugged in. List every serial port with VID 0x10C4
+    and PID 0xEA60. For each: device, serial_number, location (USB path),
+    description, and its *IDN? response. *IDN? is the ONLY command sent.
+    State plainly whether the serial_number values are distinct. If they are
+    not, say that the physical USB port (location) is the only way to tell the
+    meters apart, and record the locations.
+
+
+=====================================================================
+6. B&K DAQ3120
+=====================================================================
+
+6.1 TRANSPORT FACTS (from the manufacturer's programming manual)
+    - LAN: raw TCP socket. Terminator is LF (\n).
+    - The socket port is NOT documented as a default. The manual's EXAMPLE
+      is 5025. Default --port to 5025; if the connection is refused, tell the
+      operator to read the port from the front-panel LAN menu or from the
+      instrument's web page at http://<ip>.
+    - USB: in "CDC" mode the DAQ appears as a serial COM port. Use SerialLink
+      in LINE mode. NO character echo - that is a 2831E-only behaviour.
+    - Only wait for a response after a query (a command ending in "?").
+      SYSTem:LOCal returns nothing.
+    - Channel numbers are <slot><two-digit channel>: slot 1 -> 101..140,
+      slot 2 -> 201..240, slot 3 -> 301..340. Written in commands as (@101).
+    - *IDN? returns "B&K Precision, DAQ3120, <serial>, <firmware>".
+    - The DAQ HAS an error queue: SYSTem:ERRor? returns the next error and
+      removes it. Its "no error" response format is NOT documented - capture
+      the first one verbatim. Treat a response beginning with 0 as "no error"
+      and stop draining there, or after 20 entries.
+    - Drain SYSTem:ERRor? at the very start (label everything found
+      "pre-existing"), and again after EVERY query, so each error is
+      attributed to the query that caused it.
+
+6.2 TIER 1 ALLOWLIST (queries only - plus SYSTem:LOCal at the very end)
+    *IDN?                                         CR-DAQ-001
+    *ESR?                                         CR-DAQ-004 (clears the event register - note it)
+    *STB?                                         CR-DAQ-006
+    SYSTem:ERRor?                                 CR-DAQ-101
+    SYSTem:SERial?                                CR-DAQ-102
+    SYSTem:VERSion?                               CR-DAQ-103
+    SYSTem:LFRequency?                            CR-DAQ-104
+    SYSTem:CTYPe? <slot>          slot 1|2|3      CR-DAQ-100
+    SYSTem:SLOT:LABel? <slot>     slot 1|2|3      CR-DAQ-110
+    SYSTem:PERSona:MANufacturer?                  CR-DAQ-111 (query only)
+    SYSTem:PERSona:MODel?                         CR-DAQ-111 (query only)
+    SYSTem:SCPi:MODE?                             CR-DAQ-111 (query only)
+    SYSTem:ALARm?                                 CR-DAQ-110
+    SYSTem:TEMPerature?                           CR-DAQ-109
+    SYSTem:UPTime?                                CR-DAQ-109
+    SYSTem:DATE?                                  CR-DAQ-109
+    SYSTem:TIME?                                  CR-DAQ-109
+    INSTrument:DMM?                               CR-DAQ-025 (QUERY ONLY)
+    ROUTe:SCAN?                                   CR-DAQ-064
+    ROUTe:SCAN:SIZE?                              CR-DAQ-065
+    ROUTe:MONitor:STATe?                          CR-DAQ-067
+    TRIGger:SOURce?                               CR-DAQ-080
+    TRIGger:COUNt?                                CR-DAQ-081
+    TRIGger:TIMer?                                CR-DAQ-082
+    FORMat:READing:CHANnel?                       register section 3.11
+    FORMat:READing:TIME?                          register section 3.11
+    FORMat:READing:UNIT?                          register section 3.11
+    DATA:POINts?                                  register section 3.11
+    STATus:QUEStionable:CONDition?                register section 3.11
+    STATus:OPERation:CONDition?                   register section 3.11
+    STATus:ALARm:CONDition?                       register section 3.11
+    SYSTem:COMMunicate:LAN:IPADdress?             CR-DAQ-112
+    SYSTem:COMMunicate:LAN:SMASk?                 CR-DAQ-112
+    SYSTem:COMMunicate:LAN:GATeway?               CR-DAQ-112
+    SYSTem:COMMunicate:LAN:DHCP?                  CR-DAQ-112
+    SYSTem:COMMunicate:LAN:HOSTname?              CR-DAQ-112
+    SYSTem:COMMunicate:LAN:MAC?                   CR-DAQ-112
+    SYSTem:COMMunicate:LAN:TCP:ENABle?            CR-DAQ-113
+    SYSTem:COMMunicate:LAN:TCP:PORT?              CR-DAQ-113
+    SYSTem:COMMunicate:LAN:TELNet:ENABle?         CR-DAQ-114
+    SYSTem:COMMunicate:LAN:WEB:ENABle?            CR-DAQ-115
+    SYSTem:COMMunicate:GPIB:ADDRess?              CR-DAQ-116
+    Per-channel queries. <ch> matches ^[1-3](0[1-9]|[1-3][0-9]|40)$
+      CONFigure? (@<ch>)                          CR-DAQ-030
+      ROUTe:CLOSe? (@<ch>)                        CR-DAQ-060 (query form ONLY)
+      CALCulate:LIMit:STATe? (@<ch>)              CR-DAQ-092
+      SYSTem:RELay:CYCLes? (@<ch>)                CR-DAQ-108
+    Final command of EVERY daq session, including after an error:
+      SYSTem:LOCal                                CR-DAQ-106
+
+6.3 CHANNEL MAP DISCOVERY (part of tier 1)
+    - SYSTem:CTYPe? response format is NOT documented. Store it verbatim.
+      Only label a slot with a module name if the response literally
+      contains one of: DM300 DM301 DM303 DM304 DM307 DM308 DM309.
+    - For every slot 1-3, probe channels 01-40 with CONFigure? (@<ch>),
+      draining SYSTem:ERRor? after each. A channel "exists" if it answers
+      without adding an error. Record the full list of existing channels per
+      slot. (This answers an open question: whether the DM301 module's two
+      current channels are numbered x21 and x22.)
+    - For EXISTING channels only, also query ROUTe:CLOSe?,
+      CALCulate:LIMit:STATe? and SYSTem:RELay:CYCLes?.
+    - If ANY channel reports a closed relay:
+        * make "RELAY CLOSED AS FOUND: <channels>" the first line of the report
+        * refuse --active for this run
+        * do NOT try to open it
+    - If the persona manufacturer/model is not "B&K Precision" / "DAQ3120",
+      flag it loudly: the reported identity may have been altered.
+
+6.4 TIER 2 (only with --active and "INPUTS DISCONNECTED")
+    *TST?                                         CR-DAQ-008
+    Record the result verbatim. 0 = pass. NOTHING ELSE is added in tier 2.
+
+6.5 LINK CHARACTERISATION (tier 1)
+    - 50 x *IDN?: min / median / max, failure count, recommended timeout.
+    - 5 x close-and-reopen of the connection, each followed by *IDN?.
+    - Clock difference: PC time minus SYSTem:DATE? + SYSTem:TIME?, seconds.
+
+6.6 THINGS THE DAQ DOES THAT MATTER (context - do not act on these)
+    - Setting INSTrument:DMM (on or off) forces a FACTORY RESET and wipes
+      the configuration. That is why only the query form is allowed.
+    - ROUTe:CLOSe (set form) closes relays WITHOUT opening others, which on a
+      wiring-harness fixture can short two pins together. Never send it.
+    - Reading memory holds 100,000 readings. R? and DATA:REMove? ERASE them.
+
+
+=====================================================================
+7. COMMAND-LINE INTERFACE
+=====================================================================
+
+  python -m tools.discovery list-ports
+  python -m tools.discovery dmm --port <COMx or /dev/ttyUSBx> --label DMM-A --operator "<name>"
+                                [--baud 9600] [--term LF|CR] [--active] [--out discovery_runs]
+  python -m tools.discovery dmm-pair --operator "<name>" [--baud 9600] [--term LF|CR]
+  python -m tools.discovery daq --host <ip> [--port 5025] --label DAQ --operator "<name>" [--active]
+  python -m tools.discovery daq --serial-port <port> --label DAQ --operator "<name>" [--active]
+
+  --label and --operator are REQUIRED and are written into every report.
+  list-ports prints every serial port with device, description, hwid, vid,
+  pid, serial_number, manufacturer and location, and marks VID 0x10C4 /
+  PID 0xEA60 as "likely 2831E (CP210x)". list-ports sends NOTHING to any port.
+
+
+=====================================================================
+8. ROBUSTNESS AND OUTPUT
+=====================================================================
+
+8.1 ROBUSTNESS
+  - Every read has a timeout. One failed query NEVER aborts a session:
+    record it and continue. Only the identity gate and a lost connection end
+    a session early.
+  - Ctrl-C at any point: close the port or socket cleanly, and still write a
+    partial report marked INCOMPLETE.
+  - Create the session folder BEFORE the first byte is sent:
+      discovery_runs/<YYYYMMDD-HHMMSS>_<label>/
+  - Never retry a non-idempotent command. (In tier 1 the only one is
+    SYSTem:LOCal.)
+
+8.2 OUTPUT - one folder per session, four files
+  transcript.log
+      Every byte sent and received, with monotonic timestamps, shown as hex
+      AND printable ASCII. The most important file.
+  report.json
+      Everything structured: tool version, date/time, operator, label, host
+      OS, Python and pyserial versions, transport settings, and every query
+      with its raw response, parsed value, latency and error.
+  report.md
+      Human summary. Any STOP condition goes in the first lines.
+  profile_fragment.yaml
+      Proposed values for the project's configuration file: serial, firmware,
+      port / IP, installed modules, existing channels, internal DMM state, LAN
+      settings. For human review only - the tool never edits any other file.
+
+8.3 report.md MUST ANSWER, IN THIS ORDER
+  2831E:   model and firmware; USB serial and location; baud and terminator
+           confirmed; as-found function and trigger source; range / auto /
+           NPLC / REL state for every function; which per-function queries
+           answered; a reading-format example; overload format and staleness
+           result (tier 2); latency and recommended timeout.
+  DAQ3120: manufacturer, model, serial, firmware, SCPI version; line
+           frequency; persona check; raw module response per slot and
+           existing channel numbers per slot; as-found configuration per
+           channel; any closed relay; relay cycle counts; internal DMM state;
+           scan list; trigger settings; reading-format settings; LAN settings
+           including telnet and web state; GPIB address; status registers;
+           every error drained; latency and recommended timeout; clock
+           difference.
+
+8.4 TESTS (pytest)
+  NO real serial ports and NO sockets in tests. Inject in-memory fake links
+  from tests/discovery/fakes.py.
+  - Every command in 4.4 raises CommandNotAllowed before anything is written.
+  - Malformed slot or channel parameters are refused.
+  - 2831E fake that echoes each byte; one that drops a single echo (retry
+    succeeds); one that drops all echoes (typed error + the baud hint);
+    one with a busy period that ignores bytes.
+  - Identity gate: a 5491B response and an unknown response each stop the
+    session with nothing else sent.
+  - Tier 2 on the 2831E restores function and trigger source; a failed
+    restore is flagged in the first line of the report.
+  - Tier 2 refuses to run without the exact phrase INPUTS DISCONNECTED.
+  - DAQ fake: error draining attributes each error to the right query;
+    channel probing yields the right channel list; a closed relay produces
+    the STOP line and refuses --active.
+  - Ctrl-C mid-session writes a report marked INCOMPLETE.
+  - SYSTem:LOCal is the last command of every DAQ session, even after an error.
+
+
+=====================================================================
+9. DELIVERY FORMAT - FOLLOW EXACTLY
+=====================================================================
+
+You are in a chat. You cannot create files; the user will copy each file you
+write into their project folder. A tool this size will not fit in one reply,
+so deliver it in steps.
+
+STEP 0 - before any code, reply with ONLY:
+  a) the list of files from section 3, in the order you will deliver them;
+  b) the complete 2831E and DAQ3120 allowlists as you understand them, so the
+     user can check them against sections 5 and 6;
+  c) any question, ambiguity or conflict you found in this specification.
+  Then stop and wait. Do not write code until the user replies GO.
+
+STEP 1 onwards - ONE FILE PER REPLY:
+  - Start the reply with the file path as a heading.
+  - Give the COMPLETE file in one code block. Never write "...", "rest
+    unchanged", "same as before", "add the remaining", or any placeholder.
+    Never abbreviate.
+  - If a file is too long for one reply, split it into clearly numbered
+    parts ("part 1 of 2") that the user pastes one after the other.
+  - End each reply with exactly one line:
+      NEXT: <path of the next file>     - reply NEXT to continue
+  - Deliver in this order: requirements-discovery.txt, the __init__ files,
+    allowlist.py, transcript.py, links.py, probe_bk2831e.py,
+    probe_daq3120.py, report.py, __main__.py, fakes.py, then the tests.
+
+AFTER THE LAST FILE:
+  - Show the folder tree.
+  - Give the exact commands to install and test:
+      pip install -r requirements-discovery.txt
+      python -m pytest tests/discovery -v
+      python -m tools.discovery list-ports
+  - The user will paste the test output back to you. For any failure, send
+    the COMPLETE corrected file - never a partial diff.
+  - Never make a test pass by weakening it, skipping it, or marking it xfail.
+
+Begin with STEP 0 now.
