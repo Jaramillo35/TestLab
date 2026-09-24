@@ -37,50 +37,63 @@ B&K DAQ3120. This file is for YOU - do not upload it as knowledge.
   One zip with everything:
     https://github.com/Jaramillo35/TestLab/raw/main/AgentKnowledgeBase/copilot_agent_pack.zip
 
-  Or browse the files individually:
+  Or browse the files individually (for downloading - NOT as agent knowledge):
     https://github.com/Jaramillo35/TestLab/tree/main/AgentKnowledgeBase/copilot_agent_pack
 
   Unzip it on your PC.
 
 
 =====================================================================
-3. WHY NOT JUST PASTE A GITHUB LINK AS KNOWLEDGE
+3. WHY A LINK IS THE WRONG TOOL HERE
 =====================================================================
 
-  A "public website" knowledge source does not read the page directly. It
-  searches Bing's index, scoped to that site. Microsoft's documented limits:
+  A "public website" knowledge source does not read the page. It searches
+  Bing's index, scoped to that site. Microsoft's documented limits:
     - the URL can be at most TWO levels deep (github.com/a/b is the maximum);
     - sites that Bing has not indexed are not supported;
     - at most four public URLs.
-  The GitHub file links are six levels deep, and a new repository is not in
-  Bing's index in any useful way. A GitHub link would add almost nothing.
 
-  OneDrive and SharePoint links are https links too, and the agent reads those
-  files directly - no Bing involved. That is the route below.
+  So these all FAIL, even the ones that pass the 2-level check:
+    - GitHub file links                  too deep, and the repo is not indexed
+    - OneDrive "Copy link" links         too deep, and they carry parameters
+    - a temporary public link to a PC or Raspberry Pi (tunnel, ngrok, etc.)
+                                         passes the depth check, but Bing has
+                                         never indexed it, so the agent finds
+                                         nothing. It also exposes a device on
+                                         the lab network to the internet.
+
+  And even a Bing-indexed site only gives the agent search snippets, not whole
+  files. For a spec whose whole point is exact command strings, that is the
+  wrong way to deliver it. Give the agent the FILES instead - section 4.
 
 
 =====================================================================
-4. ADD THE KNOWLEDGE - choose ONE option
+4. ADD THE KNOWLEDGE - in this order of preference
 =====================================================================
 
-  OPTION A - OneDrive or SharePoint link (use this if your builder asks for a link)
-    1. In OneDrive (or a SharePoint site you control) create a folder, e.g.
-         HarnessTester-DiscoveryAgent
-    2. Upload the 7 files from the knowledge/ folder into it.
-    3. Copy the folder's link:
-         OneDrive: select the folder > Copy link. It looks like
-           https://<your-company>-my.sharepoint.com/...
-         SharePoint: open the folder > copy the browser address.
-    4. In the agent's Knowledge section, choose SharePoint / OneDrive and paste
-       the link. (Adding the 7 files individually also works.)
-    5. Anyone who will use the agent needs read access to that folder.
-    6. New files can take a while to be indexed. If the agent says it can't
+  OPTION A - upload the files straight into the agent  (best)
+    In the agent's Knowledge section, look for an upload / attach option.
+    Upload the 7 files from knowledge/. The limit is 20 files. No link, no
+    depth rule, no Bing. Some organisations switch uploads off; if you don't
+    see the option, use B.
+
+  OPTION B - pick the files from OneDrive or SharePoint with the file browser
+    1. Put the 7 files from knowledge/ in a OneDrive (or SharePoint) folder.
+    2. In the agent's Knowledge section choose the OneDrive / SharePoint
+       option and use its BROWSE / SELECT picker to choose the files.
+       Do NOT paste a link - picking the files avoids the 2-level URL rule.
+       (Limits: 50 OneDrive files, 100 SharePoint items.)
+    3. Anyone who uses the agent needs read access to those files.
+    4. New files can take a while to be indexed. If the agent says it can't
        find a file, wait and try again.
 
-  OPTION B - upload the files directly
-    If your Knowledge section offers "Upload files", upload the 7 files from
-    knowledge/. The limit is 20 files, so 7 is fine. Some organisations switch
-    this option off; if you don't see it, use Option A.
+  OPTION C - only if you MUST paste a link
+    Use a SharePoint SITE root, which is exactly two levels deep:
+        https://<your-company>.sharepoint.com/sites/<SiteName>
+    Put the 7 files in that site's main document library. The WHOLE site
+    becomes the agent's knowledge, so use a site that contains only these
+    files - otherwise unrelated documents get mixed in. You may need your
+    IT / SharePoint admin to create the site.
 
 
 =====================================================================
